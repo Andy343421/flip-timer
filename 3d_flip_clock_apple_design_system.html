@@ -1,0 +1,1582 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D 翻頁時鐘 — Flip Clock</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tone.js for realistic mechanical flip sound -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+  <style>
+    /* ==========================================================================
+       Apple Design System Tokens (apple.DESIGN.md)
+       ========================================================================== */
+    :root {
+      /* Core Palette */
+      --apple-primary: #0071E3;
+      --apple-accent: #2997FF;
+      --apple-accent-1: #0066CC;
+      --apple-accent-2: #B64400;
+      --apple-canvas: #FFFFFF;
+      --apple-surface: #F5F5F7;
+      --apple-surface-raised: #EBEBED;
+      --apple-ink: #000000;
+      --apple-body: #1D1D1F;
+      --apple-muted: #6E6E73;
+      --apple-faint: #86868B;
+      --apple-hairline: #D2D2D7;
+      --apple-neutral-1: #333336;
+
+      /* Dark Stage Palette (Derived Dark Theme in apple.DESIGN.md) */
+      --stage-bg: #000000;
+      --stage-surface: #181D24;
+      --stage-surface-raised: #242930;
+      --stage-border: #30353B;
+
+      /* Dynamic Flip Card Variables */
+      --card-bg: #1D1D1F;
+      --text-color: #FFFFFF;
+      --font-weight: 600;
+      --perspective: 1400px;
+
+      /* Typography Stacks */
+      --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro TC", "PingFang TC", "Helvetica Neue", sans-serif;
+      --font-text: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro TC", "PingFang TC", "Helvetica Neue", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: var(--font-text);
+      font-size: 17px;
+      line-height: 1.18;
+      letter-spacing: -0.37px;
+      background-color: var(--stage-bg);
+      color: var(--apple-canvas);
+      overflow: hidden;
+    }
+
+    /* Focus Ring Standard (#0071E3 2px solid) */
+    button:focus-visible,
+    input:focus-visible {
+      outline: 2px solid var(--apple-primary);
+      outline-offset: 2px;
+    }
+
+    /* ==========================================================================
+       Full-Viewport Stage (Flat Color-Blocking Elevation Strategy)
+       ========================================================================== */
+    .hero-stage {
+      background-color: #090F16;
+      height: 100dvh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+      transition: background-color 0.3s ease;
+    }
+
+    /* Pure black OLED mode when "顯示背景" is unchecked */
+    .hero-stage.no-bg {
+      background-color: #000000;
+    }
+
+    /* Top Navigation Bar (44px height per apple.DESIGN.md) */
+    .apple-nav {
+      height: 44px;
+      min-height: 44px;
+      background-color: rgba(29, 29, 31, 0.80);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      z-index: 30;
+    }
+
+    .apple-nav-inner {
+      max-width: 980px;
+      width: 100%;
+      height: 100%;
+      margin: 0 auto;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    @media (max-width: 640px) {
+      .apple-nav {
+        height: auto;
+        min-height: 44px;
+        padding: 6px 0;
+      }
+      .apple-nav-inner {
+        padding: 0 8px;
+        flex-wrap: wrap;
+      }
+    }
+
+    /* ==========================================================================
+       3D Interactive Clock Viewport & Flip Cards
+       ========================================================================== */
+    .clock-3d-viewport {
+      perspective: var(--perspective);
+      touch-action: none;
+      cursor: grab;
+      user-select: none;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px 12px;
+    }
+
+    .clock-3d-viewport:active {
+      cursor: grabbing;
+    }
+
+    .clock-3d-rig {
+      transform-style: preserve-3d;
+      transition: transform 0.14s cubic-bezier(0.2, 0.8, 0.2, 1);
+      will-change: transform;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Flip Card Architecture (rounded.md = 28px, color-blocked elevation) */
+    .flip-unit {
+      position: relative;
+      width: clamp(92px, 19vw, 212px);
+      height: clamp(132px, 26vw, 292px);
+      border-radius: clamp(16px, 2.4vw, 28px);
+      background-color: var(--card-bg);
+      border: 1px solid rgba(255, 255, 255, 0.10);
+      perspective: 1100px;
+      font-family: var(--font-display);
+      font-weight: var(--font-weight);
+      color: var(--text-color);
+      transition: background-color 0.25s ease, color 0.25s ease;
+    }
+
+    .flip-unit.seconds-unit {
+      width: clamp(72px, 14vw, 156px);
+      height: clamp(104px, 19.5vw, 216px);
+      border-radius: clamp(14px, 2vw, 24px);
+    }
+
+    .flip-card-half {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 50%;
+      overflow: hidden;
+      background-color: var(--card-bg);
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      transition: background-color 0.25s ease;
+    }
+
+    .flip-top {
+      top: 0;
+      border-top-left-radius: clamp(16px, 2.4vw, 28px);
+      border-top-right-radius: clamp(16px, 2.4vw, 28px);
+      transform-origin: 50% 100%;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.45);
+    }
+
+    .flip-bottom {
+      bottom: 0;
+      border-bottom-left-radius: clamp(16px, 2.4vw, 28px);
+      border-bottom-right-radius: clamp(16px, 2.4vw, 28px);
+      transform-origin: 50% 0%;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .seconds-unit .flip-top {
+      border-top-left-radius: clamp(14px, 2vw, 24px);
+      border-top-right-radius: clamp(14px, 2vw, 24px);
+    }
+
+    .seconds-unit .flip-bottom {
+      border-bottom-left-radius: clamp(14px, 2vw, 24px);
+      border-bottom-right-radius: clamp(14px, 2vw, 24px);
+    }
+
+    /* Subtle surface shift between upper and lower halves for clarity */
+    .flip-top::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-color: rgba(255, 255, 255, 0.03);
+      pointer-events: none;
+    }
+
+    .flip-bottom::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-color: rgba(0, 0, 0, 0.14);
+      pointer-events: none;
+    }
+
+    /* Surgical Display Typography with Negative Letter-Spacing */
+    .digit-text {
+      position: absolute;
+      left: 0;
+      width: 100%;
+      height: 200%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: clamp(3.6rem, 11.5vw, 9.4rem);
+      line-height: 1.05;
+      letter-spacing: -0.04em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .seconds-unit .digit-text {
+      font-size: clamp(2.6rem, 8.2vw, 6.8rem);
+      letter-spacing: -0.03em;
+    }
+
+    .flip-top .digit-text {
+      top: 0;
+    }
+
+    .flip-bottom .digit-text {
+      top: -100%;
+    }
+
+    /* Precision Mechanical Hinge Line */
+    .hinge-line {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background-color: rgba(0, 0, 0, 0.72);
+      transform: translateY(-50%);
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .hinge-pin-left,
+    .hinge-pin-right {
+      position: absolute;
+      top: 50%;
+      width: 5px;
+      height: 12px;
+      background-color: #090F16;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 2px;
+      transform: translateY(-50%);
+      z-index: 25;
+      pointer-events: none;
+    }
+
+    .hinge-pin-left { left: -1px; }
+    .hinge-pin-right { right: -1px; }
+
+    /* Animated Flip Flaps */
+    .flap-top-anim {
+      z-index: 15;
+      animation: flipTopDown 0.28s cubic-bezier(0.37, 0.01, 0.94, 0.35) forwards;
+    }
+
+    .flap-bottom-anim {
+      z-index: 16;
+      transform: rotateX(90deg);
+      animation: flipBottomDown 0.28s cubic-bezier(0.15, 0.45, 0.28, 1) 0.28s forwards;
+    }
+
+    @keyframes flipTopDown {
+      0% { transform: rotateX(0deg); opacity: 1; }
+      100% { transform: rotateX(-90deg); opacity: 0.78; }
+    }
+
+    @keyframes flipBottomDown {
+      0% { transform: rotateX(90deg); opacity: 0.82; }
+      100% { transform: rotateX(0deg); opacity: 1; }
+    }
+
+    /* Apple Pill Buttons */
+    .btn-apple-primary {
+      background-color: var(--apple-primary);
+      color: var(--apple-canvas);
+      border-radius: 9999px;
+      font-family: var(--font-text);
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 1.29;
+      letter-spacing: -0.22px;
+      padding: 8px 18px;
+      transition: background-color 0.2s ease, opacity 0.2s ease;
+    }
+
+    .btn-apple-primary:hover {
+      background-color: #0077ED;
+    }
+
+    .btn-apple-outline {
+      background-color: transparent;
+      color: var(--apple-accent);
+      border: 1px solid var(--apple-accent);
+      border-radius: 9999px;
+      font-family: var(--font-text);
+      font-size: 14px;
+      font-weight: 400;
+      line-height: 1.29;
+      letter-spacing: -0.22px;
+      padding: 8px 18px;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    .btn-apple-outline:hover {
+      background-color: rgba(41, 151, 255, 0.12);
+    }
+
+    /* Custom Scrollbar for Settings Modal */
+    .settings-scroll::-webkit-scrollbar {
+      width: 6px;
+    }
+    .settings-scroll::-webkit-scrollbar-track {
+      background: #F5F5F7;
+    }
+    .settings-scroll::-webkit-scrollbar-thumb {
+      background: #D2D2D7;
+      border-radius: 9999px;
+    }
+    .settings-scroll::-webkit-scrollbar-thumb:hover {
+      background: #86868B;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Toast Notification (Flat Color-Blocking Elevation) -->
+  <div id="toast" class="fixed bottom-14 left-1/2 -translate-x-1/2 z-50 pointer-events-none opacity-0 transition-all duration-200 transform translate-y-2">
+    <div id="toast-msg" class="bg-[#1D1D1F] text-white text-[14px] leading-[1.29] tracking-[-0.22px] px-4 py-2 rounded-full border border-[#30353B] flex items-center gap-2">
+      <span>已套用設定</span>
+    </div>
+  </div>
+
+  <!-- FULLSCREEN / FULL-VIEWPORT 3D FLIP CLOCK STAGE -->
+  <section id="clock-stage" class="hero-stage">
+
+    <!-- Apple Top Navigation Bar (44px height, 980px inner container) -->
+    <header class="apple-nav">
+      <div class="apple-nav-inner">
+        <!-- Left: Style & Preset Selector -->
+        <div class="relative">
+          <button id="clock-menu-btn" type="button" class="flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] text-[14px] font-normal text-white/90 hover:text-white hover:bg-white/10 transition">
+            <svg class="w-3.5 h-3.5 text-[#2997FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line>
+              <line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line>
+              <line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line>
+              <line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line>
+              <line x1="17" y1="16" x2="23" y2="16"></line>
+            </svg>
+            <span id="current-style-label" class="tracking-[-0.22px]">翻頁時鐘</span>
+            <svg class="w-3.5 h-3.5 text-[#86868B]" id="menu-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+
+          <!-- Dropdown Menu (z-index 30, flat color-blocked) -->
+          <div id="clock-menu-dropdown" class="hidden absolute left-0 mt-2 w-56 rounded-[11px] bg-[#181D24] border border-[#30353B] py-1.5 z-30">
+            <div class="px-3.5 py-1 text-[10px] font-semibold uppercase tracking-[-0.08px] text-[#86868B]">模式切換</div>
+            <button data-mode="clock" class="mode-item w-full text-left px-3.5 py-1.5 text-[14px] hover:bg-white/5 flex items-center justify-between text-[#2997FF] font-semibold">
+              <span>翻頁時鐘 (Clock)</span>
+              <span class="mode-check">✓</span>
+            </button>
+            <button data-mode="timer" class="mode-item w-full text-left px-3.5 py-1.5 text-[14px] hover:bg-white/5 flex items-center justify-between text-white/90">
+              <span>倒數計時器 (Timer)</span>
+              <span class="mode-check hidden">✓</span>
+            </button>
+            <button data-mode="stopwatch" class="mode-item w-full text-left px-3.5 py-1.5 text-[14px] hover:bg-white/5 flex items-center justify-between text-white/90">
+              <span>翻頁碼錶 (Stopwatch)</span>
+              <span class="mode-check hidden">✓</span>
+            </button>
+            <div class="border-t border-[#30353B] my-1.5"></div>
+            <div class="px-3.5 py-1 text-[10px] font-semibold uppercase tracking-[-0.08px] text-[#86868B]">外觀主題</div>
+            <button data-preset="classic" class="preset-item w-full text-left px-3.5 py-1.5 text-[14px] hover:bg-white/5 text-white/90">
+              經典深邃石墨
+            </button>
+            <button data-preset="minimal-light" class="preset-item w-full text-left px-3.5 py-1.5 text-[14px] hover:bg-white/5 text-white/90">
+              極簡純白表面
+            </button>
+            <button data-preset="amber-retro" class="preset-item w-full text-left px-3.5 py-1.5 text-[14px] hover:bg-white/5 text-white/90">
+              復古琥珀刻度
+            </button>
+            <button data-preset="matrix-green" class="preset-item w-full text-left px-3.5 py-1.5 text-[14px] hover:bg-white/5 text-white/90">
+              電光藍調風格
+            </button>
+            <div class="border-t border-[#30353B] my-1.5"></div>
+            <button id="reset-3d-btn" class="w-full text-left px-3.5 py-1.5 text-[12px] text-[#2997FF] hover:underline">
+              重置 3D 視角 (雙擊時鐘)
+            </button>
+          </div>
+        </div>
+
+        <!-- Center: Segmented Mode Switcher (Apple Pill Affordances) -->
+        <div class="flex items-center bg-[#181D24] p-0.5 rounded-full border border-[#30353B]">
+          <button type="button" data-mode="clock" class="mode-pill px-3.5 py-1 rounded-full text-[12px] font-semibold tracking-[-0.12px] bg-[#0071E3] text-white transition">
+            時鐘
+          </button>
+          <button type="button" data-mode="timer" class="mode-pill px-3.5 py-1 rounded-full text-[12px] font-normal tracking-[-0.12px] text-[#9BA0A6] hover:text-white transition">
+            計時器
+          </button>
+          <button type="button" data-mode="stopwatch" class="mode-pill px-3.5 py-1 rounded-full text-[12px] font-normal tracking-[-0.12px] text-[#9BA0A6] hover:text-white transition">
+            碼錶
+          </button>
+        </div>
+
+        <!-- Right: Utility Action Controls -->
+        <div class="flex items-center gap-1 sm:gap-2">
+          <!-- Fullscreen Button -->
+          <button id="fullscreen-btn" type="button" class="flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] hover:bg-white/10 text-[12px] sm:text-[14px] text-white/85 hover:text-white transition">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline>
+              <line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line>
+            </svg>
+            <span id="fullscreen-label">全螢幕</span>
+          </button>
+
+          <!-- Keep Awake (Wake Lock) Button -->
+          <button id="wakelock-btn" type="button" class="flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] hover:bg-white/10 text-[12px] sm:text-[14px] text-[#2997FF] font-normal transition" title="防止螢幕自動休眠">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span>保持喚醒</span>
+          </button>
+
+          <!-- Sound Toggle Button -->
+          <button id="sound-btn" type="button" class="flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] hover:bg-white/10 text-[12px] sm:text-[14px] text-white/85 hover:text-white transition">
+            <svg id="sound-icon-off" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <line x1="23" y1="9" x2="17" y2="15"></line>
+              <line x1="17" y1="9" x2="23" y2="15"></line>
+            </svg>
+            <svg id="sound-icon-on" class="hidden w-3.5 h-3.5 text-[#2997FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+            <span>聲音</span>
+          </button>
+
+          <!-- Settings Button -->
+          <button id="open-settings-btn" type="button" class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#0071E3] hover:bg-[#0077ED] text-[12px] sm:text-[14px] text-white font-normal transition">
+            <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            <span>設定</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Center 3D Flip Clock Stage -->
+    <main id="clock-viewport" class="clock-3d-viewport">
+      <div id="clock-rig" class="clock-3d-rig">
+
+        <!-- Date / Weekday / Lunar Metadata Row (Clock Mode) -->
+        <div id="date-info-bar" class="mb-7 sm:mb-9 flex flex-wrap items-center justify-center gap-2.5 sm:gap-3.5 text-[14px] sm:text-[17px] text-[#9BA0A6] font-normal tracking-[-0.37px]">
+          <span id="gregorian-date" class="text-[#F5F9FE]">2026年11月22日</span>
+          <span id="weekday-display" class="px-3 py-1 rounded-full bg-[#181D24] border border-[#30353B] text-[#F5F9FE] text-[12px] font-semibold tracking-[-0.12px]">星期日</span>
+          <span id="lunar-display" class="text-[#2997FF] text-[14px] sm:text-[17px]">農曆十月十四</span>
+        </div>
+
+        <!-- Timer Presets Bar (Timer Mode - Pill Affordances) -->
+        <div id="timer-presets-bar" class="hidden mb-7 sm:mb-9 flex flex-wrap items-center justify-center gap-2">
+          <button type="button" data-minutes="1" class="timer-preset-btn px-3.5 py-1.5 rounded-full bg-[#181D24] hover:bg-[#242930] border border-[#30353B] text-[12px] sm:text-[14px] text-[#F5F9FE] transition">1 分鐘</button>
+          <button type="button" data-minutes="5" class="timer-preset-btn px-3.5 py-1.5 rounded-full bg-[#181D24] hover:bg-[#242930] border border-[#30353B] text-[12px] sm:text-[14px] text-[#F5F9FE] transition">5 分鐘</button>
+          <button type="button" data-minutes="15" class="timer-preset-btn px-3.5 py-1.5 rounded-full bg-[#181D24] hover:bg-[#242930] border border-[#30353B] text-[12px] sm:text-[14px] text-[#F5F9FE] transition">15 分鐘</button>
+          <button type="button" data-minutes="25" class="timer-preset-btn px-3.5 py-1.5 rounded-full bg-[#181D24] hover:bg-[#242930] border border-[#30353B] text-[12px] sm:text-[14px] text-[#F5F9FE] transition">25 分鐘 · 專注</button>
+          <button type="button" id="custom-timer-toggle" class="btn-apple-outline !py-1.5 !px-3.5 !text-[12px] sm:!text-[14px]">自訂時間</button>
+        </div>
+
+        <!-- Custom Timer Input Popover (Inline) -->
+        <div id="custom-timer-box" class="hidden mb-6 flex items-center justify-center gap-2 bg-[#181D24] px-4 py-2 rounded-[11px] border border-[#30353B]">
+          <input type="number" id="custom-h" min="0" max="99" value="0" class="w-14 px-2 py-1 rounded-[8px] bg-[#090F16] border border-[#30353B] text-center text-[#F5F9FE] text-[14px]" placeholder="時">
+          <span class="text-[#86868B]">:</span>
+          <input type="number" id="custom-m" min="0" max="59" value="10" class="w-14 px-2 py-1 rounded-[8px] bg-[#090F16] border border-[#30353B] text-center text-[#F5F9FE] text-[14px]" placeholder="分">
+          <span class="text-[#86868B]">:</span>
+          <input type="number" id="custom-s" min="0" max="59" value="0" class="w-14 px-2 py-1 rounded-[8px] bg-[#090F16] border border-[#30353B] text-center text-[#F5F9FE] text-[14px]" placeholder="秒">
+          <button type="button" id="apply-custom-timer" class="btn-apple-primary ml-2 !py-1 !px-3.5">套用</button>
+        </div>
+
+        <!-- Stopwatch Status / Lap Badge (Stopwatch Mode) -->
+        <div id="stopwatch-info-bar" class="hidden mb-7 sm:mb-9 flex items-center justify-center gap-3 text-[12px] sm:text-[14px] text-[#9BA0A6]">
+          <span class="px-3 py-1 rounded-full bg-[#181D24] border border-[#30353B]">時 : 分 : 秒</span>
+          <span id="stopwatch-ms-display" class="font-mono text-[#2997FF] font-semibold text-[14px] sm:text-[17px]">.00</span>
+        </div>
+
+        <!-- 3D Flip Units Row -->
+        <div class="flex items-center justify-center gap-3 sm:gap-5 md:gap-7 relative">
+          <!-- Hours Unit -->
+          <div class="relative">
+            <!-- AM/PM Pill Badge -->
+            <span id="ampm-badge" class="hidden absolute top-3 left-3.5 z-30 text-[10px] sm:text-[12px] font-semibold tracking-[-0.08px] uppercase px-2 py-0.5 rounded-full bg-black/40 text-current opacity-80">PM</span>
+            <div id="unit-hours" class="flip-unit">
+              <div class="hinge-line"></div>
+              <div class="hinge-pin-left"></div>
+              <div class="hinge-pin-right"></div>
+              <div class="flip-card-half flip-top"><div class="digit-text" id="hours-top">16</div></div>
+              <div class="flip-card-half flip-bottom"><div class="digit-text" id="hours-bottom">16</div></div>
+            </div>
+          </div>
+
+          <!-- Precision Divider Dots -->
+          <div class="flex flex-col gap-3.5 sm:gap-4 opacity-40">
+            <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-[#F5F9FE]"></span>
+            <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-[#F5F9FE]"></span>
+          </div>
+
+          <!-- Minutes Unit -->
+          <div id="unit-minutes" class="flip-unit">
+            <div class="hinge-line"></div>
+            <div class="hinge-pin-left"></div>
+            <div class="hinge-pin-right"></div>
+            <div class="flip-card-half flip-top"><div class="digit-text" id="minutes-top">08</div></div>
+            <div class="flip-card-half flip-bottom"><div class="digit-text" id="minutes-bottom">08</div></div>
+          </div>
+
+          <!-- Seconds Divider Dots & Unit -->
+          <div id="seconds-colon" class="flex flex-col gap-3.5 sm:gap-4 opacity-40">
+            <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-[#F5F9FE]"></span>
+            <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-[#F5F9FE]"></span>
+          </div>
+
+          <div id="unit-seconds" class="flip-unit seconds-unit">
+            <div class="hinge-line"></div>
+            <div class="hinge-pin-left"></div>
+            <div class="hinge-pin-right"></div>
+            <div class="flip-card-half flip-top"><div class="digit-text" id="seconds-top">00</div></div>
+            <div class="flip-card-half flip-bottom"><div class="digit-text" id="seconds-bottom">00</div></div>
+          </div>
+        </div>
+
+        <!-- Timer & Stopwatch Action Controls (Apple Pill Buttons) -->
+        <div id="utility-controls" class="hidden mt-8 flex flex-wrap items-center justify-center gap-3">
+          <button type="button" id="utility-start-pause-btn" class="px-6 py-2.5 rounded-full bg-[#0071E3] hover:bg-[#0077ED] text-white font-normal text-[17px] tracking-[-0.37px] transition flex items-center gap-2">
+            <span id="utility-start-icon" class="text-[12px]">▶</span>
+            <span id="utility-start-label">開始</span>
+          </button>
+          <button type="button" id="utility-lap-btn" class="hidden px-5 py-2.5 rounded-full border border-[#2997FF] text-[#2997FF] hover:bg-[#2997FF]/10 font-normal text-[17px] tracking-[-0.37px] transition">
+            分圈
+          </button>
+          <button type="button" id="utility-reset-btn" class="px-5 py-2.5 rounded-full bg-[#181D24] hover:bg-[#242930] border border-[#30353B] text-[#F5F9FE] font-normal text-[17px] tracking-[-0.37px] transition">
+            重置
+          </button>
+        </div>
+
+        <!-- Stopwatch Lap List -->
+        <div id="stopwatch-laps" class="hidden mt-5 w-full max-w-md max-h-28 overflow-y-auto settings-scroll px-3 space-y-1.5 text-[12px] sm:text-[14px]"></div>
+
+        <!-- Minimalist Interaction Caption -->
+        <p class="mt-8 text-[12px] leading-[1.33] tracking-[-0.12px] text-[#86868B] select-none">
+          拖動旋轉 3D 視角 · 滾輪縮放 · 雙擊重置
+        </p>
+      </div>
+    </main>
+
+    <!-- Minimalist Bottom Bar (Embed Action Only; Feature Intro Section Removed) -->
+    <footer class="w-full z-20 px-3 pb-4 flex items-center justify-center">
+      <button id="copy-embed-btn" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] leading-[1.33] tracking-[-0.12px] text-[#2997FF] hover:text-[#0066CC] hover:underline transition">
+        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline>
+        </svg>
+        <span>複製網頁嵌入碼</span>
+      </button>
+    </footer>
+  </section>
+
+  <!-- SETTINGS MODAL (Styled strictly with Apple Light Surface & Hairline Tokens) -->
+  <div id="settings-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 backdrop-blur-md p-4">
+    <div class="bg-[#FFFFFF] text-[#1D1D1F] w-full max-w-2xl rounded-[28px] border border-[#D2D2D7] overflow-hidden flex flex-col max-h-[88vh]">
+
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-[#D2D2D7] flex items-center justify-between bg-[#FFFFFF]">
+        <h2 class="font-[var(--font-display)] text-[19px] font-semibold leading-[1.21] tracking-[0.23px] text-[#000000]">翻頁時鐘設定</h2>
+        <button id="close-settings-btn" type="button" aria-label="關閉設定" class="w-7 h-7 rounded-full bg-[#D2D2D7]/65 hover:bg-[#D2D2D7] text-[#1D1D1F]/70 flex items-center justify-center transition">
+          <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Modal Scrollable Body -->
+      <div class="p-6 overflow-y-auto settings-scroll space-y-6">
+
+        <!-- 1. 時間格式 -->
+        <div>
+          <h3 class="text-[14px] font-semibold leading-[1.33] tracking-[-0.12px] text-[#000000] mb-3">時間格式</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5" id="format-options">
+            <button type="button" data-format="24-sec" class="format-btn text-left px-4 py-2.5 rounded-[11px] border text-[14px] transition">
+              時:分:秒 (24小時制)
+            </button>
+            <button type="button" data-format="24-min" class="format-btn text-left px-4 py-2.5 rounded-[11px] border text-[14px] transition">
+              時:分 (24小時制)
+            </button>
+            <button type="button" data-format="12-sec" class="format-btn text-left px-4 py-2.5 rounded-[11px] border text-[14px] transition">
+              時:分:秒 (12小時制)
+            </button>
+            <button type="button" data-format="12-min" class="format-btn text-left px-4 py-2.5 rounded-[11px] border text-[14px] transition">
+              時:分 (12小時制)
+            </button>
+          </div>
+        </div>
+
+        <!-- 2. 字體設定 -->
+        <div class="pt-2 border-t border-[#D2D2D7]">
+          <h3 class="text-[14px] font-semibold leading-[1.33] tracking-[-0.12px] text-[#000000] mb-2">字體設定</h3>
+          <p class="text-[12px] leading-[1.33] tracking-[-0.12px] text-[#6E6E73] mb-2.5">字體粗細</p>
+          <div class="grid grid-cols-3 gap-2.5 mb-5" id="weight-options">
+            <button type="button" data-weight="200" class="weight-btn text-left px-4 py-2 rounded-[11px] border text-[14px] font-extralight transition">
+              Thin
+            </button>
+            <button type="button" data-weight="400" class="weight-btn text-left px-4 py-2 rounded-[11px] border text-[14px] font-normal transition">
+              Regular
+            </button>
+            <button type="button" data-weight="600" class="weight-btn text-left px-4 py-2 rounded-[11px] border text-[14px] font-semibold transition">
+              Semibold
+            </button>
+          </div>
+
+          <!-- 字體顏色 -->
+          <p class="text-[12px] leading-[1.33] tracking-[-0.12px] text-[#6E6E73] mb-2.5">字體顏色</p>
+          <div id="text-color-palette" class="grid grid-cols-8 sm:grid-cols-12 gap-2"></div>
+        </div>
+
+        <!-- 3. 卡片背景色 -->
+        <div class="pt-2 border-t border-[#D2D2D7]">
+          <h3 class="text-[14px] font-semibold leading-[1.33] tracking-[-0.12px] text-[#000000] mb-2.5">卡片背景色</h3>
+          <div id="card-color-palette" class="grid grid-cols-8 sm:grid-cols-12 gap-2"></div>
+        </div>
+
+        <!-- 4. 顯示選項 -->
+        <div class="pt-2 border-t border-[#D2D2D7]">
+          <h3 class="text-[14px] font-semibold leading-[1.33] tracking-[-0.12px] text-[#000000] mb-3">顯示選項</h3>
+          <div class="grid grid-cols-2 gap-y-3 gap-x-6 text-[14px] leading-[1.29] tracking-[-0.22px] text-[#1D1D1F]">
+            <label class="flex items-center gap-2.5 cursor-pointer select-none">
+              <input type="checkbox" id="opt-lunar" class="w-4 h-4 rounded-[4px] accent-[#0071E3] border-[#D2D2D7]">
+              <span>顯示農曆</span>
+            </label>
+            <label class="flex items-center gap-2.5 cursor-pointer select-none">
+              <input type="checkbox" id="opt-weekday" class="w-4 h-4 rounded-[4px] accent-[#0071E3] border-[#D2D2D7]">
+              <span>顯示星期</span>
+            </label>
+            <label class="flex items-center gap-2.5 cursor-pointer select-none">
+              <input type="checkbox" id="opt-ampm" class="w-4 h-4 rounded-[4px] accent-[#0071E3] border-[#D2D2D7]">
+              <span>顯示 AM/PM</span>
+            </label>
+            <label class="flex items-center gap-2.5 cursor-pointer select-none">
+              <input type="checkbox" id="opt-24h" class="w-4 h-4 rounded-[4px] accent-[#0071E3] border-[#D2D2D7]">
+              <span>24 小時制</span>
+            </label>
+            <label class="flex items-center gap-2.5 cursor-pointer select-none">
+              <input type="checkbox" id="opt-bg" class="w-4 h-4 rounded-[4px] accent-[#0071E3] border-[#D2D2D7]">
+              <span>顯示背景</span>
+            </label>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer (Surface #F5F5F7 + Pill Primary CTA #0071E3) -->
+      <div class="px-6 py-4 bg-[#F5F5F7] border-t border-[#D2D2D7] flex items-center justify-end gap-3">
+        <button id="reset-settings-btn" type="button" class="px-5 py-2 rounded-full border border-[#0071E3] text-[#0071E3] hover:bg-[#0071E3]/10 text-[14px] font-normal tracking-[-0.22px] transition">
+          重置
+        </button>
+        <button id="save-settings-btn" type="button" class="px-6 py-2 rounded-full bg-[#0071E3] hover:bg-[#0077ED] text-white text-[14px] font-normal tracking-[-0.22px] transition">
+          儲存
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden textarea for safe clipboard copy -->
+  <textarea id="clipboard-helper" class="sr-only" aria-hidden="true"></textarea>
+
+  <script>
+    /**
+     * 3D Flip Clock Application Logic (Apple Design System Edition)
+     * Preserves 100% of original functionality:
+     * - Real-time precision clock with 12h/24h, seconds, AM/PM, Weekday, and Chinese Lunar date
+     * - Countdown Timer with presets and custom HH:MM:SS input
+     * - Stopwatch with centiseconds and Lap recording
+     * - Interactive 3D drag rotation, wheel zoom, and double-click reset
+     * - Tone.js mechanical flip tick sound & timer completion chime
+     * - Screen Wake Lock, Fullscreen mode, Iframe embed snippet copy, and persistent settings
+     */
+
+    const COLOR_PALETTE = [
+      '#ffffff', '#000000', '#1d1d1f', '#333336', '#6e6e73', '#86868b',
+      '#f5f5f7', '#0071e3', '#2997ff', '#0066cc', '#b64400', '#fbbf24',
+      '#f59e0b', '#dc2626', '#ef4444', '#059669', '#10b981', '#7c3aed',
+      '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#0891b2', '#be185d',
+      '#9333ea', '#65a30d'
+    ];
+
+    const defaultSettings = {
+      is24Hour: true,
+      showSeconds: true,
+      fontWeight: '600',
+      textColor: '#ffffff',
+      cardBg: '#1d1d1f',
+      showLunar: true,
+      showWeekday: true,
+      showAmPm: true,
+      showBg: true
+    };
+
+    function parseQueryDefaults() {
+      const params = new URLSearchParams(window.location.search);
+      const cfg = { ...defaultSettings };
+      if (params.has('format')) {
+        cfg.is24Hour = params.get('format') !== '12';
+      }
+      if (params.has('seconds')) {
+        cfg.showSeconds = params.get('seconds') !== '0';
+      }
+      if (params.get('theme') === 'light') {
+        cfg.cardBg = '#f5f5f7';
+        cfg.textColor = '#000000';
+      }
+      return cfg;
+    }
+
+    let settings = (() => {
+      try {
+        const saved = localStorage.getItem('clockhub_settings_v1');
+        return saved ? { ...parseQueryDefaults(), ...JSON.parse(saved) } : parseQueryDefaults();
+      } catch (e) {
+        return parseQueryDefaults();
+      }
+    })();
+
+    let draftSettings = { ...settings };
+
+    let prevValues = {
+      hours: null,
+      minutes: null,
+      seconds: null
+    };
+
+    let currentMode = 'clock';
+
+    // Timer State
+    let timerInitialSeconds = 5 * 60;
+    let timerRemainingSeconds = 5 * 60;
+    let timerRunning = false;
+    let timerInterval = null;
+
+    // Stopwatch State
+    let stopwatchElapsedMs = 0;
+    let stopwatchRunning = false;
+    let stopwatchLastTick = 0;
+    let stopwatchRaf = null;
+    let stopwatchLaps = [];
+
+    // Audio & Wake Lock State
+    let soundEnabled = false;
+    let flipSynth = null;
+    let wakeLockSentinel = null;
+    let keepAwakeActive = true;
+
+    // 3D Transform State
+    let rotX = 0;
+    let rotY = 0;
+    let zoomScale = 1;
+    let isDragging = false;
+    let startPointerX = 0;
+    let startPointerY = 0;
+
+    // DOM References
+    const clockStage = document.getElementById('clock-stage');
+    const clockViewport = document.getElementById('clock-viewport');
+    const clockRig = document.getElementById('clock-rig');
+
+    const unitSeconds = document.getElementById('unit-seconds');
+    const secondsColon = document.getElementById('seconds-colon');
+    const ampmBadge = document.getElementById('ampm-badge');
+
+    const gregorianDateEl = document.getElementById('gregorian-date');
+    const weekdayEl = document.getElementById('weekday-display');
+    const lunarEl = document.getElementById('lunar-display');
+
+    let toastTimeout = null;
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-msg');
+      if (!toast || !toastMsg) return;
+      toastMsg.innerHTML = `<span>${message}</span>`;
+      toast.classList.remove('opacity-0', 'translate-y-2');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        toast.classList.remove('opacity-100', 'translate-y-0');
+      }, 2200);
+    }
+
+    function playFlipSound() {
+      if (!soundEnabled || typeof Tone === 'undefined') return;
+      try {
+        if (Tone.context.state !== 'running') {
+          Tone.start();
+        }
+        if (!flipSynth) {
+          flipSynth = new Tone.MembraneSynth({
+            pitchDecay: 0.008,
+            octaves: 2,
+            oscillator: { type: 'sine' },
+            envelope: { attack: 0.001, decay: 0.04, sustain: 0, release: 0.02 }
+          }).toDestination();
+          flipSynth.volume.value = -14;
+        }
+        flipSynth.triggerAttackRelease('C2', '32n');
+      } catch (e) {}
+    }
+
+    function playTimerAlarm() {
+      if (typeof Tone === 'undefined') return;
+      try {
+        if (Tone.context.state !== 'running') {
+          Tone.start();
+        }
+        const chime = new Tone.Synth({
+          oscillator: { type: 'sine' },
+          envelope: { attack: 0.01, decay: 0.3, sustain: 0.1, release: 0.8 }
+        }).toDestination();
+        const now = Tone.now();
+        chime.triggerAttackRelease('E5', '8n', now);
+        chime.triggerAttackRelease('G5', '8n', now + 0.18);
+        chime.triggerAttackRelease('C6', '4n', now + 0.36);
+      } catch (e) {}
+    }
+
+    function getChineseLunarString(date) {
+      try {
+        const formatter = new Intl.DateTimeFormat('zh-Hant-TW-u-ca-chinese', {
+          month: 'long',
+          day: 'numeric'
+        });
+        const parts = formatter.formatToParts(date);
+        const monthPart = parts.find(p => p.type === 'month')?.value || '';
+        const dayPart = parts.find(p => p.type === 'day')?.value || '';
+        const lunarDays = [
+          '', '初一', '初二', '初三', '初四', '初五', '初六', '初七', '初八', '初九', '初十',
+          '十一', '十二', '十三', '十四', '十五', '十六', '十七', '十八', '十九', '二十',
+          '廿一', '廿二', '廿三', '廿四', '廿五', '廿六', '廿七', '廿八', '廿九', '三十'
+        ];
+        const dayNum = parseInt(dayPart, 10);
+        const formattedDay = !isNaN(dayNum) && lunarDays[dayNum] ? lunarDays[dayNum] : dayPart;
+        return `農曆${monthPart}${formattedDay}`;
+      } catch (e) {
+        return '農曆十月十四';
+      }
+    }
+
+    function flipDigitUnit(unitName, newVal) {
+      const unitEl = document.getElementById(`unit-${unitName}`);
+      const topEl = document.getElementById(`${unitName}-top`);
+      const bottomEl = document.getElementById(`${unitName}-bottom`);
+      const oldVal = prevValues[unitName];
+
+      if (oldVal === null) {
+        topEl.textContent = newVal;
+        bottomEl.textContent = newVal;
+        prevValues[unitName] = newVal;
+        return;
+      }
+
+      if (oldVal === newVal) return;
+
+      unitEl.querySelectorAll('.flap-top-anim, .flap-bottom-anim').forEach(el => el.remove());
+
+      topEl.textContent = newVal;
+      bottomEl.textContent = oldVal;
+
+      const flapTop = document.createElement('div');
+      flapTop.className = 'flip-card-half flip-top flap-top-anim';
+      flapTop.innerHTML = `<div class="digit-text">${oldVal}</div>`;
+
+      const flapBottom = document.createElement('div');
+      flapBottom.className = 'flip-card-half flip-bottom flap-bottom-anim';
+      flapBottom.innerHTML = `<div class="digit-text">${newVal}</div>`;
+
+      unitEl.appendChild(flapTop);
+      unitEl.appendChild(flapBottom);
+
+      playFlipSound();
+
+      setTimeout(() => {
+        bottomEl.textContent = newVal;
+        flapTop.remove();
+        flapBottom.remove();
+      }, 565);
+
+      prevValues[unitName] = newVal;
+    }
+
+    function updateClock() {
+      if (currentMode !== 'clock') return;
+      const now = new Date();
+      let rawHours = now.getHours();
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+
+      const isPM = rawHours >= 12;
+      ampmBadge.textContent = isPM ? 'PM' : 'AM';
+
+      let displayHours = rawHours;
+      if (!settings.is24Hour) {
+        displayHours = rawHours % 12;
+        if (displayHours === 0) displayHours = 12;
+      }
+      const hoursStr = String(displayHours).padStart(2, '0');
+
+      flipDigitUnit('hours', hoursStr);
+      flipDigitUnit('minutes', minutes);
+      if (settings.showSeconds) {
+        flipDigitUnit('seconds', seconds);
+      }
+
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      const day = now.getDate();
+      gregorianDateEl.textContent = `${year}年${month}月${day}日`;
+
+      const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+      weekdayEl.textContent = weekdays[now.getDay()];
+      lunarEl.textContent = getChineseLunarString(now);
+    }
+
+    function renderTimerDisplay() {
+      const total = Math.max(0, timerRemainingSeconds);
+      const hrs = String(Math.floor(total / 3600)).padStart(2, '0');
+      const mins = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
+      const secs = String(total % 60).padStart(2, '0');
+
+      flipDigitUnit('hours', hrs);
+      flipDigitUnit('minutes', mins);
+      flipDigitUnit('seconds', secs);
+    }
+
+    function renderStopwatchDisplay() {
+      const totalSeconds = Math.floor(stopwatchElapsedMs / 1000);
+      const centiseconds = Math.floor((stopwatchElapsedMs % 1000) / 10);
+      const hrs = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+      const mins = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+      const secs = String(totalSeconds % 60).padStart(2, '0');
+
+      flipDigitUnit('hours', hrs);
+      flipDigitUnit('minutes', mins);
+      flipDigitUnit('seconds', secs);
+
+      document.getElementById('stopwatch-ms-display').textContent = `.${String(centiseconds).padStart(2, '0')}`;
+    }
+
+    function setMode(newMode) {
+      currentMode = newMode;
+
+      const labels = { clock: '翻頁時鐘', timer: '倒數計時器', stopwatch: '翻頁碼錶' };
+      document.getElementById('current-style-label').textContent = labels[newMode];
+
+      document.querySelectorAll('.mode-item').forEach(item => {
+        const active = item.dataset.mode === newMode;
+        item.classList.toggle('text-[#2997FF]', active);
+        item.classList.toggle('font-semibold', active);
+        item.classList.toggle('text-white/90', !active);
+        item.querySelector('.mode-check').classList.toggle('hidden', !active);
+      });
+
+      document.querySelectorAll('.mode-pill').forEach(pill => {
+        const active = pill.dataset.mode === newMode;
+        if (active) {
+          pill.className = 'mode-pill px-3.5 py-1 rounded-full text-[12px] font-semibold tracking-[-0.12px] bg-[#0071E3] text-white transition';
+        } else {
+          pill.className = 'mode-pill px-3.5 py-1 rounded-full text-[12px] font-normal tracking-[-0.12px] text-[#9BA0A6] hover:text-white transition';
+        }
+      });
+
+      const dateBar = document.getElementById('date-info-bar');
+      const timerBar = document.getElementById('timer-presets-bar');
+      const customTimerBox = document.getElementById('custom-timer-box');
+      const stopwatchBar = document.getElementById('stopwatch-info-bar');
+      const utilityControls = document.getElementById('utility-controls');
+      const lapBtn = document.getElementById('utility-lap-btn');
+      const lapsContainer = document.getElementById('stopwatch-laps');
+
+      prevValues = { hours: null, minutes: null, seconds: null };
+
+      if (newMode === 'clock') {
+        dateBar.classList.remove('hidden');
+        timerBar.classList.add('hidden');
+        customTimerBox.classList.add('hidden');
+        stopwatchBar.classList.add('hidden');
+        utilityControls.classList.add('hidden');
+        lapsContainer.classList.add('hidden');
+
+        ampmBadge.classList.toggle('hidden', !settings.showAmPm);
+        unitSeconds.classList.toggle('hidden', !settings.showSeconds);
+        secondsColon.classList.toggle('hidden', !settings.showSeconds);
+        updateClock();
+      } else if (newMode === 'timer') {
+        dateBar.classList.add('hidden');
+        timerBar.classList.remove('hidden');
+        stopwatchBar.classList.add('hidden');
+        utilityControls.classList.remove('hidden');
+        lapBtn.classList.add('hidden');
+        lapsContainer.classList.add('hidden');
+        ampmBadge.classList.add('hidden');
+
+        unitSeconds.classList.remove('hidden');
+        secondsColon.classList.remove('hidden');
+
+        syncUtilityButtonUI(timerRunning);
+        renderTimerDisplay();
+      } else if (newMode === 'stopwatch') {
+        dateBar.classList.add('hidden');
+        timerBar.classList.add('hidden');
+        customTimerBox.classList.add('hidden');
+        stopwatchBar.classList.remove('hidden');
+        utilityControls.classList.remove('hidden');
+        lapBtn.classList.remove('hidden');
+        lapsContainer.classList.toggle('hidden', stopwatchLaps.length === 0);
+        ampmBadge.classList.add('hidden');
+
+        unitSeconds.classList.remove('hidden');
+        secondsColon.classList.remove('hidden');
+
+        syncUtilityButtonUI(stopwatchRunning);
+        renderStopwatchDisplay();
+      }
+    }
+
+    function syncUtilityButtonUI(isRunning) {
+      const btn = document.getElementById('utility-start-pause-btn');
+      const icon = document.getElementById('utility-start-icon');
+      const label = document.getElementById('utility-start-label');
+      if (isRunning) {
+        btn.className = 'px-6 py-2.5 rounded-full border border-[#2997FF] text-[#2997FF] hover:bg-[#2997FF]/10 font-normal text-[17px] tracking-[-0.37px] transition flex items-center gap-2';
+        icon.textContent = '❚❚';
+        label.textContent = '暫停';
+      } else {
+        btn.className = 'px-6 py-2.5 rounded-full bg-[#0071E3] hover:bg-[#0077ED] text-white font-normal text-[17px] tracking-[-0.37px] transition flex items-center gap-2';
+        icon.textContent = '▶';
+        label.textContent = '開始';
+      }
+    }
+
+    function toggleTimer() {
+      if (timerRunning) {
+        clearInterval(timerInterval);
+        timerRunning = false;
+        syncUtilityButtonUI(false);
+      } else {
+        if (timerRemainingSeconds <= 0) {
+          timerRemainingSeconds = timerInitialSeconds;
+        }
+        timerRunning = true;
+        syncUtilityButtonUI(true);
+        timerInterval = setInterval(() => {
+          if (timerRemainingSeconds > 0) {
+            timerRemainingSeconds--;
+            if (currentMode === 'timer') renderTimerDisplay();
+          }
+          if (timerRemainingSeconds <= 0) {
+            clearInterval(timerInterval);
+            timerRunning = false;
+            if (currentMode === 'timer') syncUtilityButtonUI(false);
+            playTimerAlarm();
+            showToast('倒數計時結束');
+          }
+        }, 1000);
+      }
+    }
+
+    function resetTimer() {
+      clearInterval(timerInterval);
+      timerRunning = false;
+      timerRemainingSeconds = timerInitialSeconds;
+      syncUtilityButtonUI(false);
+      renderTimerDisplay();
+    }
+
+    function stopwatchTick(now) {
+      if (!stopwatchRunning) return;
+      const delta = now - stopwatchLastTick;
+      stopwatchLastTick = now;
+      stopwatchElapsedMs += delta;
+      if (currentMode === 'stopwatch') {
+        renderStopwatchDisplay();
+      }
+      stopwatchRaf = requestAnimationFrame(stopwatchTick);
+    }
+
+    function toggleStopwatch() {
+      if (stopwatchRunning) {
+        stopwatchRunning = false;
+        cancelAnimationFrame(stopwatchRaf);
+        syncUtilityButtonUI(false);
+      } else {
+        stopwatchRunning = true;
+        stopwatchLastTick = performance.now();
+        syncUtilityButtonUI(true);
+        stopwatchRaf = requestAnimationFrame(stopwatchTick);
+      }
+    }
+
+    function resetStopwatch() {
+      stopwatchRunning = false;
+      cancelAnimationFrame(stopwatchRaf);
+      stopwatchElapsedMs = 0;
+      stopwatchLaps = [];
+      const lapsContainer = document.getElementById('stopwatch-laps');
+      lapsContainer.innerHTML = '';
+      lapsContainer.classList.add('hidden');
+      syncUtilityButtonUI(false);
+      renderStopwatchDisplay();
+    }
+
+    function recordStopwatchLap() {
+      if (stopwatchElapsedMs === 0) return;
+      const totalSeconds = Math.floor(stopwatchElapsedMs / 1000);
+      const cs = String(Math.floor((stopwatchElapsedMs % 1000) / 10)).padStart(2, '0');
+      const hrs = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+      const mins = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+      const secs = String(totalSeconds % 60).padStart(2, '0');
+      const formatted = `${hrs}:${mins}:${secs}.${cs}`;
+
+      stopwatchLaps.unshift(formatted);
+      const lapsContainer = document.getElementById('stopwatch-laps');
+      lapsContainer.classList.remove('hidden');
+      lapsContainer.innerHTML = stopwatchLaps.map((lapTime, idx) => `
+        <div class="flex items-center justify-between px-4 py-1.5 rounded-[11px] bg-[#181D24] border border-[#30353B] text-[#F5F9FE]">
+          <span class="text-[#9BA0A6]">分圈 ${stopwatchLaps.length - idx}</span>
+          <span class="font-mono font-semibold">${lapTime}</span>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('utility-start-pause-btn').addEventListener('click', () => {
+      if (currentMode === 'timer') toggleTimer();
+      else if (currentMode === 'stopwatch') toggleStopwatch();
+    });
+
+    document.getElementById('utility-reset-btn').addEventListener('click', () => {
+      if (currentMode === 'timer') {
+        resetTimer();
+        showToast('計時器已重置');
+      } else if (currentMode === 'stopwatch') {
+        resetStopwatch();
+        showToast('碼錶已歸零');
+      }
+    });
+
+    document.getElementById('utility-lap-btn').addEventListener('click', recordStopwatchLap);
+
+    document.querySelectorAll('.timer-preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const mins = parseInt(btn.dataset.minutes, 10);
+        timerInitialSeconds = mins * 60;
+        resetTimer();
+        document.getElementById('custom-timer-box').classList.add('hidden');
+        showToast(`已設定 ${mins} 分鐘倒數`);
+      });
+    });
+
+    document.getElementById('custom-timer-toggle').addEventListener('click', () => {
+      document.getElementById('custom-timer-box').classList.toggle('hidden');
+    });
+
+    document.getElementById('apply-custom-timer').addEventListener('click', () => {
+      const h = Math.max(0, Math.min(99, parseInt(document.getElementById('custom-h').value || '0', 10)));
+      const m = Math.max(0, Math.min(59, parseInt(document.getElementById('custom-m').value || '0', 10)));
+      const s = Math.max(0, Math.min(59, parseInt(document.getElementById('custom-s').value || '0', 10)));
+      const total = h * 3600 + m * 60 + s;
+      if (total <= 0) {
+        showToast('請輸入大於 0 秒的時間');
+        return;
+      }
+      timerInitialSeconds = total;
+      resetTimer();
+      document.getElementById('custom-timer-box').classList.add('hidden');
+      showToast('已套用自訂倒數時間');
+    });
+
+    document.querySelectorAll('.mode-pill, .mode-item').forEach(el => {
+      el.addEventListener('click', () => {
+        setMode(el.dataset.mode);
+      });
+    });
+
+    function applySettingsToDOM(cfg) {
+      document.documentElement.style.setProperty('--card-bg', cfg.cardBg);
+      document.documentElement.style.setProperty('--text-color', cfg.textColor);
+      document.documentElement.style.setProperty('--font-weight', cfg.fontWeight);
+
+      if (currentMode === 'clock') {
+        if (cfg.showSeconds) {
+          unitSeconds.classList.remove('hidden');
+          secondsColon.classList.remove('hidden');
+        } else {
+          unitSeconds.classList.add('hidden');
+          secondsColon.classList.add('hidden');
+        }
+
+        if (cfg.showAmPm) {
+          ampmBadge.classList.remove('hidden');
+        } else {
+          ampmBadge.classList.add('hidden');
+        }
+      }
+
+      weekdayEl.classList.toggle('hidden', !cfg.showWeekday);
+      lunarEl.classList.toggle('hidden', !cfg.showLunar);
+
+      if (cfg.showBg) {
+        clockStage.classList.remove('no-bg');
+      } else {
+        clockStage.classList.add('no-bg');
+      }
+
+      prevValues.hours = null;
+      if (currentMode === 'clock') updateClock();
+      else if (currentMode === 'timer') renderTimerDisplay();
+      else if (currentMode === 'stopwatch') renderStopwatchDisplay();
+    }
+
+    function renderSettingsModalUI() {
+      document.querySelectorAll('.format-btn').forEach(btn => {
+        const fmt = btn.dataset.format;
+        const isCurrent =
+          (fmt === '24-sec' && draftSettings.is24Hour && draftSettings.showSeconds) ||
+          (fmt === '24-min' && draftSettings.is24Hour && !draftSettings.showSeconds) ||
+          (fmt === '12-sec' && !draftSettings.is24Hour && draftSettings.showSeconds) ||
+          (fmt === '12-min' && !draftSettings.is24Hour && !draftSettings.showSeconds);
+
+        btn.className = isCurrent
+          ? 'format-btn text-left px-4 py-2.5 rounded-[11px] border border-[#0071E3] bg-[#0071E3]/10 text-[#0071E3] text-[14px] font-semibold transition'
+          : 'format-btn text-left px-4 py-2.5 rounded-[11px] border border-[#D2D2D7] bg-[#FFFFFF] hover:bg-[#F5F5F7] text-[#1D1D1F] text-[14px] transition';
+      });
+
+      document.querySelectorAll('.weight-btn').forEach(btn => {
+        const isSelected = btn.dataset.weight === draftSettings.fontWeight;
+        btn.className = isSelected
+          ? 'weight-btn text-left px-4 py-2 rounded-[11px] border border-[#0071E3] bg-[#0071E3]/10 text-[#0071E3] text-[14px] transition'
+          : 'weight-btn text-left px-4 py-2 rounded-[11px] border border-[#D2D2D7] bg-[#FFFFFF] hover:bg-[#F5F5F7] text-[#1D1D1F] text-[14px] transition';
+      });
+
+      const textPalette = document.getElementById('text-color-palette');
+      textPalette.innerHTML = '';
+      COLOR_PALETTE.forEach(hex => {
+        const swatch = document.createElement('button');
+        swatch.type = 'button';
+        const active = draftSettings.textColor.toLowerCase() === hex.toLowerCase();
+        swatch.className = `w-7 h-7 rounded-full border transition ${
+          active ? 'ring-2 ring-[#0071E3] ring-offset-2 border-[#0071E3]' : 'border-[#D2D2D7]'
+        }`;
+        swatch.style.backgroundColor = hex;
+        swatch.title = hex;
+        swatch.addEventListener('click', () => {
+          draftSettings.textColor = hex;
+          renderSettingsModalUI();
+        });
+        textPalette.appendChild(swatch);
+      });
+
+      const cardPalette = document.getElementById('card-color-palette');
+      cardPalette.innerHTML = '';
+      COLOR_PALETTE.forEach(hex => {
+        const swatch = document.createElement('button');
+        swatch.type = 'button';
+        const active = draftSettings.cardBg.toLowerCase() === hex.toLowerCase();
+        swatch.className = `w-7 h-7 rounded-full border transition ${
+          active ? 'ring-2 ring-[#0071E3] ring-offset-2 border-[#0071E3]' : 'border-[#D2D2D7]'
+        }`;
+        swatch.style.backgroundColor = hex;
+        swatch.title = hex;
+        swatch.addEventListener('click', () => {
+          draftSettings.cardBg = hex;
+          renderSettingsModalUI();
+        });
+        cardPalette.appendChild(swatch);
+      });
+
+      document.getElementById('opt-lunar').checked = draftSettings.showLunar;
+      document.getElementById('opt-weekday').checked = draftSettings.showWeekday;
+      document.getElementById('opt-ampm').checked = draftSettings.showAmPm;
+      document.getElementById('opt-24h').checked = draftSettings.is24Hour;
+      document.getElementById('opt-bg').checked = draftSettings.showBg;
+    }
+
+    function update3DTransform() {
+      clockRig.style.transform = `scale(${zoomScale}) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+    }
+
+    clockViewport.addEventListener('pointerdown', (e) => {
+      isDragging = true;
+      startPointerX = e.clientX;
+      startPointerY = e.clientY;
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - startPointerX;
+      const dy = e.clientY - startPointerY;
+      startPointerX = e.clientX;
+      startPointerY = e.clientY;
+
+      rotY = Math.max(-38, Math.min(38, rotY + dx * 0.25));
+      rotX = Math.max(-28, Math.min(28, rotX - dy * 0.25));
+      update3DTransform();
+    });
+
+    window.addEventListener('pointerup', () => {
+      isDragging = false;
+    });
+
+    clockViewport.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.06 : 0.06;
+      zoomScale = Math.max(0.65, Math.min(1.45, zoomScale + delta));
+      update3DTransform();
+    }, { passive: false });
+
+    clockViewport.addEventListener('dblclick', () => {
+      rotX = 0;
+      rotY = 0;
+      zoomScale = 1;
+      update3DTransform();
+      showToast('已重置 3D 視角');
+    });
+
+    async function requestWakeLock() {
+      if ('wakeLock' in navigator && keepAwakeActive) {
+        try {
+          wakeLockSentinel = await navigator.wakeLock.request('screen');
+        } catch (err) {}
+      }
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && keepAwakeActive) {
+        requestWakeLock();
+      }
+    });
+
+    document.getElementById('wakelock-btn').addEventListener('click', async () => {
+      keepAwakeActive = !keepAwakeActive;
+      const btn = document.getElementById('wakelock-btn');
+      if (keepAwakeActive) {
+        btn.classList.remove('text-white/45');
+        btn.classList.add('text-[#2997FF]');
+        await requestWakeLock();
+        showToast('已開啟智慧防休眠');
+      } else {
+        btn.classList.remove('text-[#2997FF]');
+        btn.classList.add('text-white/45');
+        if (wakeLockSentinel) {
+          await wakeLockSentinel.release();
+          wakeLockSentinel = null;
+        }
+        showToast('已關閉防休眠');
+      }
+    });
+
+    document.getElementById('fullscreen-btn').addEventListener('click', async () => {
+      try {
+        if (!document.fullscreenElement) {
+          await clockStage.requestFullscreen();
+          document.getElementById('fullscreen-label').textContent = '退出全螢幕';
+        } else {
+          await document.exitFullscreen();
+          document.getElementById('fullscreen-label').textContent = '全螢幕';
+        }
+      } catch (err) {
+        showToast('目前環境不支援全螢幕模式');
+      }
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+      document.getElementById('fullscreen-label').textContent =
+        document.fullscreenElement ? '退出全螢幕' : '全螢幕';
+    });
+
+    document.getElementById('sound-btn').addEventListener('click', async () => {
+      soundEnabled = !soundEnabled;
+      const offIcon = document.getElementById('sound-icon-off');
+      const onIcon = document.getElementById('sound-icon-on');
+      if (soundEnabled) {
+        offIcon.classList.add('hidden');
+        onIcon.classList.remove('hidden');
+        if (typeof Tone !== 'undefined') await Tone.start();
+        playFlipSound();
+        showToast('已開啟機械翻頁音效');
+      } else {
+        onIcon.classList.add('hidden');
+        offIcon.classList.remove('hidden');
+        showToast('已靜音');
+      }
+    });
+
+    const menuBtn = document.getElementById('clock-menu-btn');
+    const menuDropdown = document.getElementById('clock-menu-dropdown');
+
+    menuBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      menuDropdown.classList.toggle('hidden');
+    });
+
+    document.addEventListener('click', () => {
+      menuDropdown.classList.add('hidden');
+    });
+
+    document.querySelectorAll('.preset-item').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const preset = btn.dataset.preset;
+        if (preset === 'classic') {
+          settings.cardBg = '#1d1d1f';
+          settings.textColor = '#ffffff';
+        } else if (preset === 'minimal-light') {
+          settings.cardBg = '#f5f5f7';
+          settings.textColor = '#000000';
+        } else if (preset === 'amber-retro') {
+          settings.cardBg = '#181d24';
+          settings.textColor = '#fbbf24';
+        } else if (preset === 'matrix-green') {
+          settings.cardBg = '#090f16';
+          settings.textColor = '#2997ff';
+        }
+        applySettingsToDOM(settings);
+        showToast('已切換時鐘外觀主題');
+      });
+    });
+
+    document.getElementById('reset-3d-btn').addEventListener('click', () => {
+      rotX = 0; rotY = 0; zoomScale = 1;
+      update3DTransform();
+      showToast('已重置 3D 視角');
+    });
+
+    const settingsModal = document.getElementById('settings-modal');
+
+    document.getElementById('open-settings-btn').addEventListener('click', () => {
+      draftSettings = { ...settings };
+      renderSettingsModalUI();
+      settingsModal.classList.remove('hidden');
+      settingsModal.classList.add('flex');
+    });
+
+    function closeSettingsModal() {
+      settingsModal.classList.add('hidden');
+      settingsModal.classList.remove('flex');
+    }
+
+    document.getElementById('close-settings-btn').addEventListener('click', closeSettingsModal);
+    settingsModal.addEventListener('click', (e) => {
+      if (e.target === settingsModal) closeSettingsModal();
+    });
+
+    document.querySelectorAll('.format-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const fmt = btn.dataset.format;
+        draftSettings.is24Hour = fmt.startsWith('24');
+        draftSettings.showSeconds = fmt.endsWith('sec');
+        renderSettingsModalUI();
+      });
+    });
+
+    document.querySelectorAll('.weight-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        draftSettings.fontWeight = btn.dataset.weight;
+        renderSettingsModalUI();
+      });
+    });
+
+    document.getElementById('opt-lunar').addEventListener('change', (e) => {
+      draftSettings.showLunar = e.target.checked;
+    });
+    document.getElementById('opt-weekday').addEventListener('change', (e) => {
+      draftSettings.showWeekday = e.target.checked;
+    });
+    document.getElementById('opt-ampm').addEventListener('change', (e) => {
+      draftSettings.showAmPm = e.target.checked;
+    });
+    document.getElementById('opt-24h').addEventListener('change', (e) => {
+      draftSettings.is24Hour = e.target.checked;
+      renderSettingsModalUI();
+    });
+    document.getElementById('opt-bg').addEventListener('change', (e) => {
+      draftSettings.showBg = e.target.checked;
+    });
+
+    document.getElementById('reset-settings-btn').addEventListener('click', () => {
+      draftSettings = { ...defaultSettings };
+      renderSettingsModalUI();
+      showToast('已恢復預設選項');
+    });
+
+    document.getElementById('save-settings-btn').addEventListener('click', () => {
+      settings = { ...draftSettings };
+      try {
+        localStorage.setItem('clockhub_settings_v1', JSON.stringify(settings));
+      } catch (e) {}
+      applySettingsToDOM(settings);
+      closeSettingsModal();
+      showToast('翻頁時鐘設定已儲存');
+    });
+
+    document.getElementById('copy-embed-btn').addEventListener('click', () => {
+      const formatParam = settings.is24Hour ? '24' : '12';
+      const secParam = settings.showSeconds ? '1' : '0';
+      const embedSnippet = `<iframe src="https://clockhub.app/embed?style=flip&format=${formatParam}&seconds=${secParam}&theme=dark&link=0" width="480" height="140" style="border:0;overflow:hidden" title="Clockhub clock" loading="lazy" scrolling="no"></iframe>`;
+
+      const helper = document.getElementById('clipboard-helper');
+      helper.value = embedSnippet;
+      helper.select();
+      document.execCommand('copy');
+      showToast('已複製 Iframe 嵌入程式碼');
+    });
+
+    function startPrecisionClock() {
+      updateClock();
+      const now = new Date();
+      const msUntilNextSecond = 1000 - now.getMilliseconds();
+      setTimeout(() => {
+        updateClock();
+        setInterval(updateClock, 1000);
+      }, msUntilNextSecond);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const urlMode = new URLSearchParams(window.location.search).get('mode');
+      applySettingsToDOM(settings);
+      if (urlMode === 'timer' || urlMode === 'stopwatch') {
+        setMode(urlMode);
+      }
+      startPrecisionClock();
+      requestWakeLock();
+    });
+  </script>
+</body>
+</html>
