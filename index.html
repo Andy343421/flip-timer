@@ -11,22 +11,17 @@
 
   <style>
     /* ==========================================================================
-       Apple Design System Tokens (apple.DESIGN.md)
+       Apple Design System Tokens
        ========================================================================== */
     :root {
       --apple-primary: #0071E3;
       --apple-accent: #2997FF;
       --apple-accent-1: #0066CC;
-      --apple-accent-2: #B64400;
       --apple-canvas: #FFFFFF;
       --apple-surface: #F5F5F7;
-      --apple-surface-raised: #EBEBED;
-      --apple-ink: #000000;
       --apple-body: #1D1D1F;
       --apple-muted: #6E6E73;
-      --apple-faint: #86868B;
       --apple-hairline: #D2D2D7;
-      --apple-neutral-1: #333336;
 
       --stage-bg: #000000;
       --stage-surface: #181D24;
@@ -40,6 +35,9 @@
       --font-weight: 600;
       --perspective: 1400px;
       --restore-btn-opacity: 0.6;
+      --flip-half-duration: 0.28s;
+      --flip-total-duration: 0.56s;
+      --flip-shield-delay: 0.56s;
 
       /* Typography Stacks */
       --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro TC", "PingFang TC", "Helvetica Neue", sans-serif;
@@ -256,8 +254,12 @@
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
       text-rendering: geometricPrecision;
-      text-shadow: 0 0 1px rgba(255, 255, 255, 0.15);
-      transform: translateZ(0.4px);
+      text-shadow:
+        0 0 1px rgba(255, 255, 255, 0.22),
+        0.4px 0 0 rgba(255, 255, 255, 0.08),
+        -0.4px 0 0 rgba(255, 255, 255, 0.08);
+      transform: translate3d(0, 0, 0.5px);
+      will-change: transform;
     }
 
     .seconds-unit .digit-text {
@@ -310,9 +312,11 @@
       -webkit-backface-visibility: hidden;
       will-change: transform;
       outline: 1px solid transparent;
-      animation: flipTopDown 0.28s cubic-bezier(0.37, 0.01, 0.94, 0.35) forwards;
+      box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.04);
+      animation: flipTopDown var(--flip-half-duration) cubic-bezier(0.37, 0.01, 0.94, 0.35) forwards;
     }
 
+    /* Keep bottom reveal sheet covering the lower half until the top flap passes down */
     .flap-bottom-anim {
       z-index: 16;
       background-color: var(--card-bg);
@@ -321,8 +325,34 @@
       -webkit-backface-visibility: hidden;
       will-change: transform;
       outline: 1px solid transparent;
+      box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.04);
       transform: rotateX(90deg) translateZ(0.5px);
-      animation: flipBottomDown 0.28s cubic-bezier(0.15, 0.45, 0.28, 1) 0.28s forwards;
+      animation: flipBottomDown var(--flip-half-duration) cubic-bezier(0.15, 0.45, 0.28, 1) var(--flip-half-duration) forwards;
+    }
+
+    /* Solid cover over the bottom half so the new digit stays covered until revealed by the flap */
+    .flap-bottom-shield {
+      z-index: 15;
+      background-color: var(--card-bg);
+      opacity: 1;
+      visibility: visible;
+      transform: translateZ(0.25px);
+      pointer-events: none;
+      animation: hideBottomShield 0.01s linear var(--flip-shield-delay) forwards;
+    }
+
+    /* Solid cover over the top half during initial/mode reveal so the top digit is hidden until flipped */
+    .flap-top-shield {
+      z-index: 14;
+      background-color: var(--card-bg);
+      opacity: 1;
+      visibility: visible;
+      transform: translateZ(0.25px);
+      pointer-events: none;
+    }
+
+    @keyframes hideBottomShield {
+      to { opacity: 0; visibility: hidden; }
     }
 
     @keyframes flipTopDown {
@@ -570,8 +600,8 @@
                 <div class="hinge-line"></div>
                 <div class="hinge-pin-left"></div>
                 <div class="hinge-pin-right"></div>
-                <div class="flip-card-half flip-top"><div class="digit-text" id="hours-top">17</div></div>
-                <div class="flip-card-half flip-bottom"><div class="digit-text" id="hours-bottom">17</div></div>
+                <div class="flip-card-half flip-top"><div class="digit-text" id="hours-top">00</div></div>
+                <div class="flip-card-half flip-bottom"><div class="digit-text" id="hours-bottom">00</div></div>
               </div>
             </div>
           </div>
@@ -589,8 +619,8 @@
               <div class="hinge-line"></div>
               <div class="hinge-pin-left"></div>
               <div class="hinge-pin-right"></div>
-              <div class="flip-card-half flip-top"><div class="digit-text" id="minutes-top">03</div></div>
-              <div class="flip-card-half flip-bottom"><div class="digit-text" id="minutes-bottom">03</div></div>
+              <div class="flip-card-half flip-top"><div class="digit-text" id="minutes-top">00</div></div>
+              <div class="flip-card-half flip-bottom"><div class="digit-text" id="minutes-bottom">00</div></div>
             </div>
           </div>
 
@@ -759,6 +789,18 @@
 
           <div class="pt-2 border-t border-[#D2D2D7]/70">
             <div class="flex items-center justify-between mb-1.5">
+              <label for="opt-flip-duration" class="text-[12px] font-semibold text-[#1D1D1F]">翻頁動畫時間</label>
+              <span id="opt-flip-duration-val" class="text-[12px] font-mono text-[#0071E3]">600 ms</span>
+            </div>
+            <input type="range" id="opt-flip-duration" min="0" max="1200" step="100" value="600" class="w-full accent-[#0071E3] cursor-pointer">
+            <div class="flex items-center justify-between mt-1 text-[11px] text-[#6E6E73]">
+              <span id="opt-flip-duration-hint">100 ms 以下無動畫</span>
+              <span id="opt-flip-last-measured" class="font-mono">實測：--</span>
+            </div>
+          </div>
+
+          <div class="pt-2 border-t border-[#D2D2D7]/70">
+            <div class="flex items-center justify-between mb-1.5">
               <label for="opt-restore-opacity" class="text-[12px] font-semibold text-[#1D1D1F]">「顯示按鈕」透明度</label>
               <span id="opt-restore-opacity-val" class="text-[12px] font-mono text-[#0071E3]">60%</span>
             </div>
@@ -812,6 +854,7 @@
       textColor: '#ffffff',
       cardBg: '#1d1d1f',
       stageBg: '#090f16',
+      flipDurationMs: 600,
       restoreButtonOpacity: 60,
       showLunar: true,
       showWeekday: true,
@@ -848,6 +891,9 @@
     let draftSettings = { ...settings };
     let prevValues = { hours: null, minutes: null, seconds: null };
     const unitFlipTimers = { hours: null, minutes: null, seconds: null };
+    const revealTimeouts = { hours: null, minutes: null, seconds: null };
+    let pendingBlankReveal = false;
+    let lastMeasuredFlipMs = null;
 
     let currentMode = 'clock';
 
@@ -877,6 +923,24 @@
     let cleanTimeOnly = false;
     let isPseudoFullscreen = false;
 
+    /**
+     * Requests a screen wake lock when supported and keepAwakeActive is enabled.
+     */
+    async function requestWakeLock() {
+      if (!keepAwakeActive || document.visibilityState !== 'visible') return;
+      if (!('wakeLock' in navigator) || typeof navigator.wakeLock?.request !== 'function') return;
+
+      try {
+        if (wakeLockSentinel && !wakeLockSentinel.released) return;
+        wakeLockSentinel = await navigator.wakeLock.request('screen');
+        wakeLockSentinel.addEventListener('release', () => {
+          wakeLockSentinel = null;
+        });
+      } catch (err) {
+        // Ignore wake lock errors when unsupported or blocked by browser policy
+      }
+    }
+
     // 3D Transform State
     let rotX = 0;
     let rotY = 0;
@@ -890,6 +954,78 @@
     const clockViewport = document.getElementById('clock-viewport');
     const clockRig = document.getElementById('clock-rig');
 
+    /**
+     * Applies current 3D tilt (rotX, rotY) and scale (zoomScale) to the flip clock rig.
+     */
+    function update3DTransform() {
+      if (!clockRig) return;
+      clockRig.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg) scale(${zoomScale})`;
+    }
+
+    /**
+     * Resets 3D rotation and zoom scale back to default centered state.
+     */
+    function reset3DTransform() {
+      rotX = 0;
+      rotY = 0;
+      zoomScale = 1;
+      update3DTransform();
+    }
+
+    function bind3DViewportInteractions() {
+      if (!clockViewport) return;
+
+      clockViewport.addEventListener('pointerdown', (e) => {
+        if (e.target.closest('button, input, select, textarea, a, label')) return;
+        isDragging = true;
+        startPointerX = e.clientX;
+        startPointerY = e.clientY;
+        try {
+          clockViewport.setPointerCapture(e.pointerId);
+        } catch (err) {}
+      });
+
+      clockViewport.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - startPointerX;
+        const dy = e.clientY - startPointerY;
+        startPointerX = e.clientX;
+        startPointerY = e.clientY;
+
+        rotY = Math.max(-38, Math.min(38, rotY + dx * 0.25));
+        rotX = Math.max(-32, Math.min(32, rotX - dy * 0.25));
+        update3DTransform();
+      });
+
+      const stopDragging = (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        if (e && typeof e.pointerId === 'number') {
+          try {
+            if (clockViewport.hasPointerCapture(e.pointerId)) {
+              clockViewport.releasePointerCapture(e.pointerId);
+            }
+          } catch (err) {}
+        }
+      };
+
+      clockViewport.addEventListener('pointerup', stopDragging);
+      clockViewport.addEventListener('pointercancel', stopDragging);
+
+      clockViewport.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.08 : 0.08;
+        zoomScale = Math.max(0.3, Math.min(2.5, Number((zoomScale + delta).toFixed(2))));
+        update3DTransform();
+      }, { passive: false });
+
+      clockViewport.addEventListener('dblclick', (e) => {
+        if (e.target.closest('button, input, select, textarea, a, label')) return;
+        reset3DTransform();
+        showToast('已重置 3D 視角');
+      });
+    }
+
     const secondsWrapper = document.getElementById('seconds-wrapper');
     const secondsColon = document.getElementById('seconds-colon');
     const ampmBadge = document.getElementById('ampm-badge');
@@ -897,6 +1033,19 @@
     const gregorianDateEl = document.getElementById('gregorian-date');
     const weekdayEl = document.getElementById('weekday-display');
     const lunarEl = document.getElementById('lunar-display');
+
+    /**
+     * Synchronizes visibility of hour/minute/second unit labels for utility modes.
+     */
+    function syncUnitLabels() {
+      const showLabels = currentMode === 'timer' || currentMode === 'stopwatch' || currentMode === 'countup';
+      ['label-hours', 'label-minutes', 'label-seconds'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.classList.toggle('hidden', !showLabels);
+        }
+      });
+    }
 
     function isAnyFullscreenActive() {
       return Boolean(
@@ -984,10 +1133,142 @@
         clearTimeout(unitFlipTimers[unitName]);
         unitFlipTimers[unitName] = null;
       }
+      if (revealTimeouts[unitName]) {
+        clearTimeout(revealTimeouts[unitName]);
+        revealTimeouts[unitName] = null;
+      }
       const unitEl = document.getElementById(`unit-${unitName}`);
       if (unitEl) {
-        unitEl.querySelectorAll('.flap-top-anim, .flap-bottom-anim').forEach(el => el.remove());
+        unitEl.querySelectorAll('.flap-top-anim, .flap-bottom-anim, .flap-bottom-shield, .flap-top-shield').forEach(el => el.remove());
       }
+    }
+
+    function prepareBlankStageForReveal() {
+      pendingBlankReveal = true;
+      ['hours', 'minutes', 'seconds'].forEach((unitName) => {
+        clearUnitFlaps(unitName);
+        prevValues[unitName] = null;
+
+        const topEl = document.getElementById(`${unitName}-top`);
+        const bottomEl = document.getElementById(`${unitName}-bottom`);
+        if (topEl) topEl.textContent = '';
+        if (bottomEl) bottomEl.textContent = '';
+
+        const unitEl = document.getElementById(`unit-${unitName}`);
+        if (unitEl) {
+          const topShield = document.createElement('div');
+          topShield.className = 'flip-card-half flip-top flap-top-shield';
+          unitEl.appendChild(topShield);
+
+          const bottomShield = document.createElement('div');
+          bottomShield.className = 'flip-card-half flip-bottom flap-bottom-shield';
+          unitEl.appendChild(bottomShield);
+        }
+      });
+    }
+
+    function consumePendingBlankReveal() {
+      pendingBlankReveal = false;
+    }
+
+    function getFlipDurationMs() {
+      const raw = typeof settings.flipDurationMs === 'number' ? settings.flipDurationMs : 600;
+      return Math.max(0, Math.min(1200, Math.round(raw / 100) * 100));
+    }
+
+    function isNoAnimationDuration(durationMs) {
+      return durationMs <= 100;
+    }
+
+    function recordFlipMeasurement(unitName, scheduledMs, startedAtPerf) {
+      const elapsedMs = Math.round(performance.now() - startedAtPerf);
+      lastMeasuredFlipMs = {
+        unit: unitName,
+        scheduled: scheduledMs,
+        actual: elapsedMs
+      };
+      const el = document.getElementById('opt-flip-last-measured');
+      if (el) {
+        const diffMs = elapsedMs - scheduledMs;
+        const diffSign = diffMs >= 0 ? `+${diffMs}` : `${diffMs}`;
+        el.textContent = `實測 ${elapsedMs} ms / 設定 ${scheduledMs} ms (${diffSign} ms)`;
+      }
+    }
+
+    function applyDigitUnit(unitName, newVal, staggerIndex = 0) {
+      const unitEl = document.getElementById(`unit-${unitName}`);
+      const topEl = document.getElementById(`${unitName}-top`);
+      const bottomEl = document.getElementById(`${unitName}-bottom`);
+      if (!unitEl || !topEl || !bottomEl) return;
+
+      const hasTopShield = Boolean(unitEl.querySelector('.flap-top-shield'));
+      const totalDurationMs = getFlipDurationMs();
+      const noAnim = isNoAnimationDuration(totalDurationMs);
+
+      if (pendingBlankReveal || hasTopShield) {
+        if (revealTimeouts[unitName]) {
+          clearTimeout(revealTimeouts[unitName]);
+          revealTimeouts[unitName] = null;
+        }
+
+        const delayMs = noAnim ? 0 : staggerIndex * 55;
+        revealTimeouts[unitName] = setTimeout(() => {
+          const animStartPerf = performance.now();
+          unitEl.querySelectorAll('.flap-top-anim, .flap-bottom-anim').forEach(el => el.remove());
+
+          if (noAnim) {
+            topEl.textContent = newVal;
+            bottomEl.textContent = newVal;
+            unitEl.querySelectorAll('.flap-top-shield, .flap-bottom-shield').forEach(el => el.remove());
+            prevValues[unitName] = newVal;
+            revealTimeouts[unitName] = null;
+            recordFlipMeasurement(unitName, 0, animStartPerf);
+            return;
+          }
+
+          topEl.textContent = newVal;
+          bottomEl.textContent = '';
+
+          const halfDurationMs = Math.max(1, Math.round(totalDurationMs / 2));
+          const bottomRevealDelayMs = Math.round(totalDurationMs * 0.75);
+
+          const flapTop = document.createElement('div');
+          flapTop.className = 'flip-card-half flip-top flap-top-anim';
+          flapTop.style.animationDuration = `${halfDurationMs}ms`;
+          flapTop.style.animationDelay = '0ms';
+          flapTop.innerHTML = `<div class="digit-text"></div>`;
+
+          const flapBottom = document.createElement('div');
+          flapBottom.className = 'flip-card-half flip-bottom flap-bottom-anim';
+          flapBottom.style.animationDuration = `${halfDurationMs}ms`;
+          flapBottom.style.animationDelay = `${halfDurationMs}ms`;
+          flapBottom.innerHTML = `<div class="digit-text">${newVal}</div>`;
+
+          unitEl.appendChild(flapTop);
+          unitEl.appendChild(flapBottom);
+
+          unitEl.querySelectorAll('.flap-top-shield').forEach(el => el.remove());
+
+          playFlipSound();
+
+          setTimeout(() => {
+            bottomEl.textContent = newVal;
+          }, bottomRevealDelayMs);
+
+          setTimeout(() => {
+            flapTop.remove();
+            flapBottom.remove();
+            unitEl.querySelectorAll('.flap-bottom-shield').forEach(el => el.remove());
+            recordFlipMeasurement(unitName, totalDurationMs, animStartPerf);
+          }, totalDurationMs);
+
+          prevValues[unitName] = newVal;
+          revealTimeouts[unitName] = null;
+        }, delayMs);
+        return;
+      }
+
+      flipDigitUnit(unitName, newVal);
     }
 
     function flipDigitUnit(unitName, newVal) {
@@ -997,7 +1278,6 @@
       const oldVal = prevValues[unitName];
 
       if (oldVal === null) {
-        clearUnitFlaps(unitName);
         topEl.textContent = newVal;
         bottomEl.textContent = newVal;
         prevValues[unitName] = newVal;
@@ -1006,16 +1286,34 @@
 
       if (oldVal === newVal) return;
 
-      clearUnitFlaps(unitName);
-      bottomEl.textContent = newVal;
+      const totalDurationMs = getFlipDurationMs();
+      const animStartPerf = performance.now();
+      unitEl.querySelectorAll('.flap-top-anim, .flap-bottom-anim').forEach(el => el.remove());
+
+      if (isNoAnimationDuration(totalDurationMs)) {
+        topEl.textContent = newVal;
+        bottomEl.textContent = newVal;
+        prevValues[unitName] = newVal;
+        recordFlipMeasurement(unitName, 0, animStartPerf);
+        return;
+      }
+
+      const halfDurationMs = Math.max(1, Math.round(totalDurationMs / 2));
+      const bottomRevealDelayMs = Math.round(totalDurationMs * 0.75);
+
       topEl.textContent = newVal;
+      bottomEl.textContent = oldVal;
 
       const flapTop = document.createElement('div');
       flapTop.className = 'flip-card-half flip-top flap-top-anim';
+      flapTop.style.animationDuration = `${halfDurationMs}ms`;
+      flapTop.style.animationDelay = '0ms';
       flapTop.innerHTML = `<div class="digit-text">${oldVal}</div>`;
 
       const flapBottom = document.createElement('div');
       flapBottom.className = 'flip-card-half flip-bottom flap-bottom-anim';
+      flapBottom.style.animationDuration = `${halfDurationMs}ms`;
+      flapBottom.style.animationDelay = `${halfDurationMs}ms`;
       flapBottom.innerHTML = `<div class="digit-text">${newVal}</div>`;
 
       unitEl.appendChild(flapTop);
@@ -1023,23 +1321,17 @@
 
       playFlipSound();
 
-      unitFlipTimers[unitName] = setTimeout(() => {
+      setTimeout(() => {
         bottomEl.textContent = newVal;
-        topEl.textContent = newVal;
+      }, bottomRevealDelayMs);
+
+      setTimeout(() => {
         flapTop.remove();
         flapBottom.remove();
-        unitFlipTimers[unitName] = null;
-      }, 565);
+        recordFlipMeasurement(unitName, totalDurationMs, animStartPerf);
+      }, totalDurationMs);
 
       prevValues[unitName] = newVal;
-    }
-
-    function syncUnitLabels() {
-      const showLabels = currentMode === 'timer' || currentMode === 'stopwatch' || currentMode === 'countup';
-      const showSec = currentMode === 'countup' ? settings.showSeconds : true;
-      document.getElementById('label-hours').classList.toggle('hidden', !showLabels);
-      document.getElementById('label-minutes').classList.toggle('hidden', !showLabels);
-      document.getElementById('label-seconds').classList.toggle('hidden', !(showLabels && showSec));
     }
 
     function updateClock() {
@@ -1059,11 +1351,12 @@
       }
       const hoursStr = String(displayHours).padStart(2, '0');
 
-      flipDigitUnit('hours', hoursStr);
-      flipDigitUnit('minutes', minutes);
+      applyDigitUnit('hours', hoursStr, 0);
+      applyDigitUnit('minutes', minutes, 1);
       if (settings.showSeconds) {
-        flipDigitUnit('seconds', seconds);
+        applyDigitUnit('seconds', seconds, 2);
       }
+      consumePendingBlankReveal();
 
       const year = now.getFullYear();
       const month = now.getMonth() + 1;
@@ -1081,9 +1374,10 @@
       const mins = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
       const secs = String(total % 60).padStart(2, '0');
 
-      flipDigitUnit('hours', hrs);
-      flipDigitUnit('minutes', mins);
-      flipDigitUnit('seconds', secs);
+      applyDigitUnit('hours', hrs, 0);
+      applyDigitUnit('minutes', mins, 1);
+      applyDigitUnit('seconds', secs, 2);
+      consumePendingBlankReveal();
     }
 
     function renderStopwatchDisplay() {
@@ -1093,9 +1387,10 @@
       const mins = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
       const secs = String(totalSeconds % 60).padStart(2, '0');
 
-      flipDigitUnit('hours', hrs);
-      flipDigitUnit('minutes', mins);
-      flipDigitUnit('seconds', secs);
+      applyDigitUnit('hours', hrs, 0);
+      applyDigitUnit('minutes', mins, 1);
+      applyDigitUnit('seconds', secs, 2);
+      consumePendingBlankReveal();
 
       document.getElementById('stopwatch-ms-display').textContent = `.${String(centiseconds).padStart(2, '0')}`;
     }
@@ -1106,11 +1401,12 @@
       const mins = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
       const secs = String(total % 60).padStart(2, '0');
 
-      flipDigitUnit('hours', hrs);
-      flipDigitUnit('minutes', mins);
+      applyDigitUnit('hours', hrs, 0);
+      applyDigitUnit('minutes', mins, 1);
       if (settings.showSeconds) {
-        flipDigitUnit('seconds', secs);
+        applyDigitUnit('seconds', secs, 2);
       }
+      consumePendingBlankReveal();
 
       document.getElementById('countup-format-label').textContent =
         settings.showSeconds ? '時 : 分 : 秒' : '時 : 分';
@@ -1154,7 +1450,7 @@
       const lapBtn = document.getElementById('utility-lap-btn');
       const lapsContainer = document.getElementById('stopwatch-laps');
 
-      prevValues = { hours: null, minutes: null, seconds: null };
+      prepareBlankStageForReveal();
 
       if (newMode === 'clock') {
         dateBar.classList.remove('hidden');
@@ -1413,6 +1709,17 @@
       document.documentElement.style.setProperty('--card-bg', cfg.cardBg);
       document.documentElement.style.setProperty('--text-color', cfg.textColor);
       document.documentElement.style.setProperty('--font-weight', cfg.fontWeight);
+
+      const flipMs = typeof cfg.flipDurationMs === 'number'
+        ? Math.max(0, Math.min(1200, Math.round(cfg.flipDurationMs / 100) * 100))
+        : 600;
+      const effectiveFlipMs = isNoAnimationDuration(flipMs) ? 0 : flipMs;
+      const halfSec = `${(effectiveFlipMs / 2000).toFixed(3)}s`;
+      const totalSec = `${(effectiveFlipMs / 1000).toFixed(3)}s`;
+      document.documentElement.style.setProperty('--flip-half-duration', halfSec);
+      document.documentElement.style.setProperty('--flip-total-duration', totalSec);
+      document.documentElement.style.setProperty('--flip-shield-delay', totalSec);
+
       const opacityVal = typeof cfg.restoreButtonOpacity === 'number' ? cfg.restoreButtonOpacity : 60;
       document.documentElement.style.setProperty('--restore-btn-opacity', String(Math.max(0.1, Math.min(1, opacityVal / 100))));
 
@@ -1596,59 +1903,20 @@
       document.getElementById('opt-24h').checked = draftSettings.is24Hour;
       document.getElementById('opt-bg').checked = draftSettings.showBg;
 
-      const opacityPercent = typeof draftSettings.restoreButtonOpacity === 'number' ? draftSettings.restoreButtonOpacity : 60;
-      const opacityInput = document.getElementById('opt-restore-opacity');
-      const opacityLabel = document.getElementById('opt-restore-opacity-val');
-      if (opacityInput) opacityInput.value = String(opacityPercent);
-      if (opacityLabel) opacityLabel.textContent = `${opacityPercent}%`;
-    }
-
-    function update3DTransform() {
-      clockRig.style.transform = `scale(${zoomScale}) rotateX(${rotX}deg) rotateY(${rotY}deg)`;
-    }
-
-    clockViewport.addEventListener('pointerdown', (e) => {
-      isDragging = true;
-      startPointerX = e.clientX;
-      startPointerY = e.clientY;
-    });
-
-    window.addEventListener('pointermove', (e) => {
-      if (!isDragging) return;
-      const dx = e.clientX - startPointerX;
-      const dy = e.clientY - startPointerY;
-      startPointerX = e.clientX;
-      startPointerY = e.clientY;
-
-      rotY = Math.max(-38, Math.min(38, rotY + dx * 0.25));
-      rotX = Math.max(-28, Math.min(28, rotX - dy * 0.25));
-      update3DTransform();
-    });
-
-    window.addEventListener('pointerup', () => {
-      isDragging = false;
-    });
-
-    clockViewport.addEventListener('wheel', (e) => {
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      zoomScale = Math.max(0.3, Math.min(2.5, Number((zoomScale + delta).toFixed(2))));
-      update3DTransform();
-    }, { passive: false });
-
-    clockViewport.addEventListener('dblclick', () => {
-      rotX = 0;
-      rotY = 0;
-      zoomScale = 1;
-      update3DTransform();
-      showToast('已重置 3D 視角');
-    });
-
-    async function requestWakeLock() {
-      if ('wakeLock' in navigator && keepAwakeActive) {
-        try {
-          wakeLockSentinel = await navigator.wakeLock.request('screen');
-        } catch (err) {}
+      const rawFlip = typeof draftSettings.flipDurationMs === 'number' ? draftSettings.flipDurationMs : 600;
+      const flipDurationVal = Math.max(0, Math.min(1200, Math.round(rawFlip / 100) * 100));
+      draftSettings.flipDurationMs = flipDurationVal;
+      const flipDurationInput = document.getElementById('opt-flip-duration');
+      const flipDurationLabel = document.getElementById('opt-flip-duration-val');
+      if (flipDurationInput) flipDurationInput.value = String(flipDurationVal);
+      if (flipDurationLabel) {
+        flipDurationLabel.textContent = `${flipDurationVal} ms`;
+      }
+      const lastMeasuredEl = document.getElementById('opt-flip-last-measured');
+      if (lastMeasuredEl && lastMeasuredFlipMs) {
+        const diffMs = lastMeasuredFlipMs.actual - lastMeasuredFlipMs.scheduled;
+        const diffSign = diffMs >= 0 ? `+${diffMs}` : `${diffMs}`;
+        lastMeasuredEl.textContent = `實測 ${lastMeasuredFlipMs.actual} ms / 設定 ${lastMeasuredFlipMs.scheduled} ms (${diffSign} ms)`;
       }
     }
 
@@ -1777,10 +2045,7 @@
     });
 
     document.getElementById('reset-3d-btn').addEventListener('click', () => {
-      rotX = 0;
-      rotY = 0;
-      zoomScale = 1;
-      update3DTransform();
+      reset3DTransform();
       showToast('已重置 3D 視角');
     });
 
@@ -1835,6 +2100,11 @@
     document.getElementById('opt-bg').addEventListener('change', (e) => {
       draftSettings.showBg = e.target.checked;
     });
+    document.getElementById('opt-flip-duration').addEventListener('input', (e) => {
+      const val = Math.max(0, Math.min(1200, Math.round((parseInt(e.target.value || '600', 10)) / 100) * 100));
+      draftSettings.flipDurationMs = val;
+      document.getElementById('opt-flip-duration-val').textContent = `${val} ms`;
+    });
     document.getElementById('opt-restore-opacity').addEventListener('input', (e) => {
       const val = Math.max(10, Math.min(100, parseInt(e.target.value || '60', 10)));
       draftSettings.restoreButtonOpacity = val;
@@ -1870,17 +2140,25 @@
     });
 
     function startPrecisionClock() {
-      updateClock();
       const now = new Date();
       const msUntilNextSecond = 1000 - now.getMilliseconds();
+      const initialLoadDelay = Math.min(180, Math.max(40, msUntilNextSecond));
+
       setTimeout(() => {
         updateClock();
-        setInterval(updateClock, 1000);
-      }, msUntilNextSecond);
+        const remainingMs = 1000 - (Date.now() % 1000);
+        setTimeout(() => {
+          updateClock();
+          setInterval(updateClock, 1000);
+        }, remainingMs);
+      }, initialLoadDelay);
     }
 
     window.addEventListener('DOMContentLoaded', () => {
       const urlMode = new URLSearchParams(window.location.search).get('mode');
+      bind3DViewportInteractions();
+      update3DTransform();
+      prepareBlankStageForReveal();
       applySettingsToDOM(settings);
       if (urlMode === 'timer' || urlMode === 'stopwatch' || urlMode === 'countup') {
         setMode(urlMode);
