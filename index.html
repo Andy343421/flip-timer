@@ -34,6 +34,7 @@
       --stage-surface: #181D24;
       --stage-surface-raised: #242930;
       --stage-border: #30353B;
+
       /* Dynamic Flip Card & Stage Variables */
       --stage-bg-color: #090F16;
       --card-bg: #1D1D1F;
@@ -460,23 +461,23 @@
               <line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line>
             </svg>
             <span id="fullscreen-label">全螢幕</span>
-        </button>
+          </button>
 
-        <!-- Clean Time-Only Toggle Button (Shown in Fullscreen Mode) -->
-        <button id="clean-mode-btn" type="button" class="hidden items-center gap-1.5 px-2.5 py-1 rounded-[8px] hover:bg-white/10 text-[12px] sm:text-[14px] text-white/85 hover:text-white transition" title="隱藏除時間以外的所有按鈕與提示">
-          <svg id="clean-icon-hide" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path>
-            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path>
-            <line x1="1" y1="1" x2="23" y2="23"></line>
-          </svg>
-          <svg id="clean-icon-show" class="hidden w-3.5 h-3.5 text-[#2997FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-            <circle cx="12" cy="12" r="3"></circle>
-          </svg>
-          <span id="clean-mode-label">隱藏按鈕</span>
-        </button>
+          <!-- Clean Time-Only Toggle Button (Shown in Fullscreen Mode) -->
+          <button id="clean-mode-btn" type="button" class="hidden items-center gap-1.5 px-2.5 py-1 rounded-[8px] hover:bg-white/10 text-[12px] sm:text-[14px] text-white/85 hover:text-white transition" title="隱藏除時間以外的所有按鈕與提示">
+            <svg id="clean-icon-hide" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path>
+              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path>
+              <line x1="1" y1="1" x2="23" y2="23"></line>
+            </svg>
+            <svg id="clean-icon-show" class="hidden w-3.5 h-3.5 text-[#2997FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <span id="clean-mode-label">隱藏按鈕</span>
+          </button>
 
-        <!-- Keep Awake (Wake Lock) Button -->
+          <!-- Keep Awake (Wake Lock) Button -->
           <button id="wakelock-btn" type="button" class="flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] hover:bg-white/10 text-[12px] sm:text-[14px] text-[#2997FF] font-normal transition" title="防止螢幕自動休眠">
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
@@ -555,15 +556,18 @@
         <!-- 3D Flip Units Row -->
         <div class="flex items-center justify-center gap-3 sm:gap-5 md:gap-7 relative">
           <!-- Hours Unit -->
-          <div class="relative">
-            <!-- AM/PM Pill Badge -->
-            <span id="ampm-badge" class="hidden absolute top-3 left-3.5 z-30 text-[10px] sm:text-[12px] font-semibold tracking-[-0.08px] uppercase px-2 py-0.5 rounded-full bg-black/40 text-current opacity-80">PM</span>
-            <div id="unit-hours" class="flip-unit">
-              <div class="hinge-line"></div>
-              <div class="hinge-pin-left"></div>
-              <div class="hinge-pin-right"></div>
-              <div class="flip-card-half flip-top"><div class="digit-text" id="hours-top">16</div></div>
-              <div class="flip-card-half flip-bottom"><div class="digit-text" id="hours-bottom">16</div></div>
+          <div class="relative flex flex-col items-center">
+            <span id="label-hours" class="hidden mb-2 text-[11px] font-semibold tracking-[0.08em] text-[#9BA0A6]">時</span>
+            <div class="relative">
+              <!-- AM/PM Pill Badge -->
+              <span id="ampm-badge" class="hidden absolute top-3 left-3.5 z-30 text-[10px] sm:text-[12px] font-semibold tracking-[-0.08px] uppercase px-2 py-0.5 rounded-full bg-black/40 text-current opacity-80">PM</span>
+              <div id="unit-hours" class="flip-unit">
+                <div class="hinge-line"></div>
+                <div class="hinge-pin-left"></div>
+                <div class="hinge-pin-right"></div>
+                <div class="flip-card-half flip-top"><div class="digit-text" id="hours-top">16</div></div>
+                <div class="flip-card-half flip-bottom"><div class="digit-text" id="hours-bottom">16</div></div>
+              </div>
             </div>
           </div>
 
@@ -574,12 +578,15 @@
           </div>
 
           <!-- Minutes Unit -->
-          <div id="unit-minutes" class="flip-unit">
-            <div class="hinge-line"></div>
-            <div class="hinge-pin-left"></div>
-            <div class="hinge-pin-right"></div>
-            <div class="flip-card-half flip-top"><div class="digit-text" id="minutes-top">08</div></div>
-            <div class="flip-card-half flip-bottom"><div class="digit-text" id="minutes-bottom">08</div></div>
+          <div class="relative flex flex-col items-center">
+            <span id="label-minutes" class="hidden mb-2 text-[11px] font-semibold tracking-[0.08em] text-[#9BA0A6]">分</span>
+            <div id="unit-minutes" class="flip-unit">
+              <div class="hinge-line"></div>
+              <div class="hinge-pin-left"></div>
+              <div class="hinge-pin-right"></div>
+              <div class="flip-card-half flip-top"><div class="digit-text" id="minutes-top">08</div></div>
+              <div class="flip-card-half flip-bottom"><div class="digit-text" id="minutes-bottom">08</div></div>
+            </div>
           </div>
 
           <!-- Seconds Divider Dots & Unit -->
@@ -588,16 +595,19 @@
             <span class="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-[#F5F9FE]"></span>
           </div>
 
-          <div id="unit-seconds" class="flip-unit seconds-unit">
-            <div class="hinge-line"></div>
-            <div class="hinge-pin-left"></div>
-            <div class="hinge-pin-right"></div>
-            <div class="flip-card-half flip-top"><div class="digit-text" id="seconds-top">00</div></div>
-            <div class="flip-card-half flip-bottom"><div class="digit-text" id="seconds-bottom">00</div></div>
+          <div id="seconds-wrapper" class="relative flex flex-col items-center">
+            <span id="label-seconds" class="hidden mb-2 text-[11px] font-semibold tracking-[0.08em] text-[#9BA0A6]">秒</span>
+            <div id="unit-seconds" class="flip-unit seconds-unit">
+              <div class="hinge-line"></div>
+              <div class="hinge-pin-left"></div>
+              <div class="hinge-pin-right"></div>
+              <div class="flip-card-half flip-top"><div class="digit-text" id="seconds-top">00</div></div>
+              <div class="flip-card-half flip-bottom"><div class="digit-text" id="seconds-bottom">00</div></div>
+            </div>
           </div>
         </div>
 
-        <!-- Timer & Stopwatch Action Controls (Apple Pill Buttons) -->
+        <!-- Timer, Stopwatch & Count-Up Action Controls (Apple Pill Buttons) -->
         <div id="utility-controls" class="hidden mt-8 flex flex-wrap items-center justify-center gap-3">
           <button type="button" id="utility-start-pause-btn" class="px-6 py-2.5 rounded-full bg-[#0071E3] hover:bg-[#0077ED] text-white font-normal text-[17px] tracking-[-0.37px] transition flex items-center gap-2">
             <span id="utility-start-icon" class="text-[12px]">▶</span>
@@ -764,13 +774,6 @@
   <script>
     /**
      * 3D Flip Clock Application Logic (Apple Design System Edition)
-     * Preserves 100% of original functionality:
-     * - Real-time precision clock with 12h/24h, seconds, AM/PM, Weekday, and Chinese Lunar date
-     * - Countdown Timer with presets and custom HH:MM:SS input
-     * - Stopwatch with centiseconds and Lap recording
-     * - Interactive 3D drag rotation, wheel zoom, and double-click reset
-     * - Tone.js mechanical flip tick sound & timer completion chime
-     * - Screen Wake Lock, Fullscreen mode, Iframe embed snippet copy, and persistent settings
      */
 
     const COLOR_PALETTE = [
@@ -842,6 +845,13 @@
       seconds: null
     };
 
+    // Track pending cleanup timers per unit so rapid flips never leave stale flaps
+    const unitFlipTimers = {
+      hours: null,
+      minutes: null,
+      seconds: null
+    };
+
     let currentMode = 'clock';
 
     // Timer State
@@ -882,7 +892,7 @@
     const clockViewport = document.getElementById('clock-viewport');
     const clockRig = document.getElementById('clock-rig');
 
-    const unitSeconds = document.getElementById('unit-seconds');
+    const secondsWrapper = document.getElementById('seconds-wrapper');
     const secondsColon = document.getElementById('seconds-colon');
     const ampmBadge = document.getElementById('ampm-badge');
 
@@ -963,6 +973,17 @@
       }
     }
 
+    function clearUnitFlaps(unitName) {
+      if (unitFlipTimers[unitName]) {
+        clearTimeout(unitFlipTimers[unitName]);
+        unitFlipTimers[unitName] = null;
+      }
+      const unitEl = document.getElementById(`unit-${unitName}`);
+      if (unitEl) {
+        unitEl.querySelectorAll('.flap-top-anim, .flap-bottom-anim').forEach(el => el.remove());
+      }
+    }
+
     function flipDigitUnit(unitName, newVal) {
       const unitEl = document.getElementById(`unit-${unitName}`);
       const topEl = document.getElementById(`${unitName}-top`);
@@ -970,6 +991,7 @@
       const oldVal = prevValues[unitName];
 
       if (oldVal === null) {
+        clearUnitFlaps(unitName);
         topEl.textContent = newVal;
         bottomEl.textContent = newVal;
         prevValues[unitName] = newVal;
@@ -978,10 +1000,10 @@
 
       if (oldVal === newVal) return;
 
-      unitEl.querySelectorAll('.flap-top-anim, .flap-bottom-anim').forEach(el => el.remove());
-
-      topEl.textContent = newVal;
+      // Immediately commit any in-flight flip so new digits never collide with stale flaps
+      clearUnitFlaps(unitName);
       bottomEl.textContent = oldVal;
+      topEl.textContent = newVal;
 
       const flapTop = document.createElement('div');
       flapTop.className = 'flip-card-half flip-top flap-top-anim';
@@ -996,13 +1018,23 @@
 
       playFlipSound();
 
-      setTimeout(() => {
+      unitFlipTimers[unitName] = setTimeout(() => {
         bottomEl.textContent = newVal;
+        topEl.textContent = newVal;
         flapTop.remove();
         flapBottom.remove();
+        unitFlipTimers[unitName] = null;
       }, 565);
 
       prevValues[unitName] = newVal;
+    }
+
+    function syncUnitLabels() {
+      const showLabels = currentMode === 'timer' || currentMode === 'stopwatch' || currentMode === 'countup';
+      const showSec = currentMode === 'countup' ? settings.showSeconds : true;
+      document.getElementById('label-hours').classList.toggle('hidden', !showLabels);
+      document.getElementById('label-minutes').classList.toggle('hidden', !showLabels);
+      document.getElementById('label-seconds').classList.toggle('hidden', !(showLabels && showSec));
     }
 
     function updateClock() {
@@ -1082,6 +1114,7 @@
     function setMode(newMode) {
       currentMode = newMode;
       syncCleanModeUI();
+      syncUnitLabels();
 
       const labels = {
         clock: '翻頁時鐘',
@@ -1129,7 +1162,7 @@
         lapsContainer.classList.add('hidden');
 
         ampmBadge.classList.toggle('hidden', !settings.showAmPm);
-        unitSeconds.classList.toggle('hidden', !settings.showSeconds);
+        secondsWrapper.classList.toggle('hidden', !settings.showSeconds);
         secondsColon.classList.toggle('hidden', !settings.showSeconds);
         updateClock();
       } else if (newMode === 'timer') {
@@ -1142,7 +1175,7 @@
         lapsContainer.classList.add('hidden');
         ampmBadge.classList.add('hidden');
 
-        unitSeconds.classList.remove('hidden');
+        secondsWrapper.classList.remove('hidden');
         secondsColon.classList.remove('hidden');
 
         syncUtilityButtonUI(timerRunning);
@@ -1158,7 +1191,7 @@
         lapsContainer.classList.toggle('hidden', stopwatchLaps.length === 0);
         ampmBadge.classList.add('hidden');
 
-        unitSeconds.classList.remove('hidden');
+        secondsWrapper.classList.remove('hidden');
         secondsColon.classList.remove('hidden');
 
         syncUtilityButtonUI(stopwatchRunning);
@@ -1174,7 +1207,7 @@
         lapsContainer.classList.add('hidden');
         ampmBadge.classList.add('hidden');
 
-        unitSeconds.classList.toggle('hidden', !settings.showSeconds);
+        secondsWrapper.classList.toggle('hidden', !settings.showSeconds);
         secondsColon.classList.toggle('hidden', !settings.showSeconds);
 
         syncUtilityButtonUI(countupRunning);
@@ -1377,10 +1410,10 @@
 
       if (currentMode === 'clock' || currentMode === 'countup') {
         if (cfg.showSeconds) {
-          unitSeconds.classList.remove('hidden');
+          secondsWrapper.classList.remove('hidden');
           secondsColon.classList.remove('hidden');
         } else {
-          unitSeconds.classList.add('hidden');
+          secondsWrapper.classList.add('hidden');
           secondsColon.classList.add('hidden');
         }
 
@@ -1402,8 +1435,9 @@
         clockStage.classList.add('no-bg');
       }
 
+      syncUnitLabels();
       syncCleanModeUI();
-      prevValues.hours = null;
+      prevValues = { hours: null, minutes: null, seconds: null };
       if (currentMode === 'clock') updateClock();
       else if (currentMode === 'timer') renderTimerDisplay();
       else if (currentMode === 'stopwatch') renderStopwatchDisplay();
@@ -1419,14 +1453,12 @@
       const cleanLabel = document.getElementById('clean-mode-label');
       const dateBar = document.getElementById('date-info-bar');
 
-      // Show the fullscreen clean-view toggle button only while in fullscreen
       cleanBtn.classList.toggle('hidden', !isFullscreen);
       cleanBtn.classList.toggle('flex', isFullscreen);
 
       const activeClean = isFullscreen && cleanTimeOnly;
       clockStage.classList.toggle('clean-time-only', activeClean);
 
-      // In clean time-only mode, hide date/lunar/weekday metadata as well so only time remains
       if (currentMode === 'clock') {
         dateBar.classList.toggle('hidden', activeClean);
       }
@@ -1644,8 +1676,24 @@
     });
 
     document.addEventListener('fullscreenchange', () => {
-      document.getElementById('fullscreen-label').textContent =
-        document.fullscreenElement ? '退出全螢幕' : '全螢幕';
+      const isFs = Boolean(document.fullscreenElement);
+      document.getElementById('fullscreen-label').textContent = isFs ? '退出全螢幕' : '全螢幕';
+      if (!isFs) {
+        cleanTimeOnly = false;
+      }
+      syncCleanModeUI();
+    });
+
+    document.getElementById('clean-mode-btn').addEventListener('click', () => {
+      cleanTimeOnly = !cleanTimeOnly;
+      syncCleanModeUI();
+      showToast(cleanTimeOnly ? '已隱藏除時間外的按鈕' : '已顯示所有按鈕');
+    });
+
+    document.getElementById('restore-clean-btn').addEventListener('click', () => {
+      cleanTimeOnly = false;
+      syncCleanModeUI();
+      showToast('已顯示所有按鈕');
     });
 
     document.getElementById('sound-btn').addEventListener('click', async () => {
