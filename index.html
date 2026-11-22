@@ -1384,8 +1384,8 @@
 
     clockViewport.addEventListener('wheel', (e) => {
       e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.06 : 0.06;
-      zoomScale = Math.max(0.65, Math.min(1.45, zoomScale + delta));
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      zoomScale = Math.max(0.3, Math.min(2.5, Number((zoomScale + delta).toFixed(2))));
       update3DTransform();
     }, { passive: false });
 
