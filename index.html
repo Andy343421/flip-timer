@@ -34,8 +34,8 @@
       --stage-surface: #181D24;
       --stage-surface-raised: #242930;
       --stage-border: #30353B;
-
-      /* Dynamic Flip Card Variables */
+      /* Dynamic Flip Card & Stage Variables */
+      --stage-bg-color: #090F16;
       --card-bg: #1D1D1F;
       --text-color: #FFFFFF;
       --font-weight: 600;
@@ -76,7 +76,7 @@
        Full-Viewport Stage (Flat Color-Blocking Elevation Strategy)
        ========================================================================== */
     .hero-stage {
-      background-color: #090F16;
+      background-color: var(--stage-bg-color);
       height: 100dvh;
       width: 100vw;
       display: flex;
@@ -670,7 +670,13 @@
           <div id="card-color-palette" class="grid grid-cols-8 sm:grid-cols-12 gap-2"></div>
         </div>
 
-        <!-- 4. 顯示選項 -->
+        <!-- 4. 背景顏色 -->
+        <div class="pt-2 border-t border-[#D2D2D7]">
+          <h3 class="text-[14px] font-semibold leading-[1.33] tracking-[-0.12px] text-[#000000] mb-2.5">背景顏色</h3>
+          <div id="stage-color-palette" class="grid grid-cols-8 sm:grid-cols-12 gap-2"></div>
+        </div>
+
+        <!-- 5. 顯示選項 -->
         <div class="pt-2 border-t border-[#D2D2D7]">
           <h3 class="text-[14px] font-semibold leading-[1.33] tracking-[-0.12px] text-[#000000] mb-3">顯示選項</h3>
           <div class="grid grid-cols-2 gap-y-3 gap-x-6 text-[14px] leading-[1.29] tracking-[-0.22px] text-[#1D1D1F]">
@@ -740,6 +746,7 @@
       fontWeight: '600',
       textColor: '#ffffff',
       cardBg: '#1d1d1f',
+      stageBg: '#090f16',
       showLunar: true,
       showWeekday: true,
       showAmPm: true,
@@ -758,6 +765,7 @@
       if (params.get('theme') === 'light') {
         cfg.cardBg = '#f5f5f7';
         cfg.textColor = '#000000';
+        cfg.stageBg = '#ffffff';
       }
       return cfg;
     }
@@ -1230,6 +1238,7 @@
     });
 
     function applySettingsToDOM(cfg) {
+      document.documentElement.style.setProperty('--stage-bg-color', cfg.stageBg || '#090f16');
       document.documentElement.style.setProperty('--card-bg', cfg.cardBg);
       document.documentElement.style.setProperty('--text-color', cfg.textColor);
       document.documentElement.style.setProperty('--font-weight', cfg.fontWeight);
@@ -1320,6 +1329,24 @@
           renderSettingsModalUI();
         });
         cardPalette.appendChild(swatch);
+      });
+
+      const stagePalette = document.getElementById('stage-color-palette');
+      stagePalette.innerHTML = '';
+      COLOR_PALETTE.forEach(hex => {
+        const swatch = document.createElement('button');
+        swatch.type = 'button';
+        const active = (draftSettings.stageBg || '#090f16').toLowerCase() === hex.toLowerCase();
+        swatch.className = `w-7 h-7 rounded-full border transition ${
+          active ? 'ring-2 ring-[#0071E3] ring-offset-2 border-[#0071E3]' : 'border-[#D2D2D7]'
+        }`;
+        swatch.style.backgroundColor = hex;
+        swatch.title = hex;
+        swatch.addEventListener('click', () => {
+          draftSettings.stageBg = hex;
+          renderSettingsModalUI();
+        });
+        stagePalette.appendChild(swatch);
       });
 
       document.getElementById('opt-lunar').checked = draftSettings.showLunar;
@@ -1457,15 +1484,19 @@
         if (preset === 'classic') {
           settings.cardBg = '#1d1d1f';
           settings.textColor = '#ffffff';
+          settings.stageBg = '#090f16';
         } else if (preset === 'minimal-light') {
           settings.cardBg = '#f5f5f7';
           settings.textColor = '#000000';
+          settings.stageBg = '#ffffff';
         } else if (preset === 'amber-retro') {
           settings.cardBg = '#181d24';
           settings.textColor = '#fbbf24';
+          settings.stageBg = '#000000';
         } else if (preset === 'matrix-green') {
           settings.cardBg = '#090f16';
           settings.textColor = '#2997ff';
+          settings.stageBg = '#181d24';
         }
         applySettingsToDOM(settings);
         showToast('已切換時鐘外觀主題');
