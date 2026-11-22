@@ -411,19 +411,9 @@
               <span>翻頁碼錶 (Stopwatch)</span>
               <span class="mode-check hidden">✓</span>
             </button>
-            <div class="border-t border-[#30353B] my-1.5"></div>
-            <div class="px-3.5 py-1 text-[10px] font-semibold uppercase tracking-[-0.08px] text-[#86868B]">外觀主題</div>
-            <button data-preset="classic" class="preset-item w-full text-left px-3.5 py-1.5 text-[14px] hover:bg-white/5 text-white/90">
-              經典深邃石墨
-            </button>
-            <button data-preset="minimal-light" class="preset-item w-full text-left px-3.5 py-1.5 text-[14px] hover:bg-white/5 text-white/90">
-              極簡純白表面
-            </button>
-            <button data-preset="amber-retro" class="preset-item w-full text-left px-3.5 py-1.5 text-[14px] hover:bg-white/5 text-white/90">
-              復古琥珀刻度
-            </button>
-            <button data-preset="matrix-green" class="preset-item w-full text-left px-3.5 py-1.5 text-[14px] hover:bg-white/5 text-white/90">
-              電光藍調風格
+            <button data-mode="countup" class="mode-item w-full text-left px-3.5 py-1.5 text-[14px] hover:bg-white/5 flex items-center justify-between text-white/90">
+              <span>正數計時 (Count Up)</span>
+              <span class="mode-check hidden">✓</span>
             </button>
             <div class="border-t border-[#30353B] my-1.5"></div>
             <button id="reset-3d-btn" class="w-full text-left px-3.5 py-1.5 text-[12px] text-[#2997FF] hover:underline">
@@ -442,6 +432,9 @@
           </button>
           <button type="button" data-mode="stopwatch" class="mode-pill px-3.5 py-1 rounded-full text-[12px] font-normal tracking-[-0.12px] text-[#9BA0A6] hover:text-white transition">
             碼錶
+          </button>
+          <button type="button" data-mode="countup" class="mode-pill px-3.5 py-1 rounded-full text-[12px] font-normal tracking-[-0.12px] text-[#9BA0A6] hover:text-white transition">
+            正數計時
           </button>
         </div>
 
@@ -525,6 +518,11 @@
         <div id="stopwatch-info-bar" class="hidden mb-7 sm:mb-9 flex items-center justify-center gap-3 text-[12px] sm:text-[14px] text-[#9BA0A6]">
           <span class="px-3 py-1 rounded-full bg-[#181D24] border border-[#30353B]">時 : 分 : 秒</span>
           <span id="stopwatch-ms-display" class="font-mono text-[#2997FF] font-semibold text-[14px] sm:text-[17px]">.00</span>
+        </div>
+
+        <!-- Count-Up Status Badge (Count-Up Mode) -->
+        <div id="countup-info-bar" class="hidden mb-7 sm:mb-9 flex items-center justify-center gap-3 text-[12px] sm:text-[14px] text-[#9BA0A6]">
+          <span id="countup-format-label" class="px-3 py-1 rounded-full bg-[#181D24] border border-[#30353B]">時 : 分 : 秒</span>
         </div>
 
         <!-- 3D Flip Units Row -->
@@ -802,6 +800,11 @@
     let stopwatchRaf = null;
     let stopwatchLaps = [];
 
+    // Count-Up State (in seconds, no laps)
+    let countupElapsedSeconds = 0;
+    let countupRunning = false;
+    let countupInterval = null;
+
     // Audio & Wake Lock State
     let soundEnabled = false;
     let flipSynth = null;
@@ -1002,10 +1005,31 @@
       document.getElementById('stopwatch-ms-display').textContent = `.${String(centiseconds).padStart(2, '0')}`;
     }
 
+    function renderCountupDisplay() {
+      const total = Math.max(0, countupElapsedSeconds);
+      const hrs = String(Math.floor(total / 3600)).padStart(2, '0');
+      const mins = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
+      const secs = String(total % 60).padStart(2, '0');
+
+      flipDigitUnit('hours', hrs);
+      flipDigitUnit('minutes', mins);
+      if (settings.showSeconds) {
+        flipDigitUnit('seconds', secs);
+      }
+
+      document.getElementById('countup-format-label').textContent =
+        settings.showSeconds ? '時 : 分 : 秒' : '時 : 分';
+    }
+
     function setMode(newMode) {
       currentMode = newMode;
 
-      const labels = { clock: '翻頁時鐘', timer: '倒數計時器', stopwatch: '翻頁碼錶' };
+      const labels = {
+        clock: '翻頁時鐘',
+        timer: '倒數計時器',
+        stopwatch: '翻頁碼錶',
+        countup: '正數計時'
+      };
       document.getElementById('current-style-label').textContent = labels[newMode];
 
       document.querySelectorAll('.mode-item').forEach(item => {
@@ -1029,6 +1053,7 @@
       const timerBar = document.getElementById('timer-presets-bar');
       const customTimerBox = document.getElementById('custom-timer-box');
       const stopwatchBar = document.getElementById('stopwatch-info-bar');
+      const countupBar = document.getElementById('countup-info-bar');
       const utilityControls = document.getElementById('utility-controls');
       const lapBtn = document.getElementById('utility-lap-btn');
       const lapsContainer = document.getElementById('stopwatch-laps');
@@ -1040,6 +1065,7 @@
         timerBar.classList.add('hidden');
         customTimerBox.classList.add('hidden');
         stopwatchBar.classList.add('hidden');
+        countupBar.classList.add('hidden');
         utilityControls.classList.add('hidden');
         lapsContainer.classList.add('hidden');
 
@@ -1051,6 +1077,7 @@
         dateBar.classList.add('hidden');
         timerBar.classList.remove('hidden');
         stopwatchBar.classList.add('hidden');
+        countupBar.classList.add('hidden');
         utilityControls.classList.remove('hidden');
         lapBtn.classList.add('hidden');
         lapsContainer.classList.add('hidden');
@@ -1066,6 +1093,7 @@
         timerBar.classList.add('hidden');
         customTimerBox.classList.add('hidden');
         stopwatchBar.classList.remove('hidden');
+        countupBar.classList.add('hidden');
         utilityControls.classList.remove('hidden');
         lapBtn.classList.remove('hidden');
         lapsContainer.classList.toggle('hidden', stopwatchLaps.length === 0);
@@ -1076,6 +1104,22 @@
 
         syncUtilityButtonUI(stopwatchRunning);
         renderStopwatchDisplay();
+      } else if (newMode === 'countup') {
+        dateBar.classList.add('hidden');
+        timerBar.classList.add('hidden');
+        customTimerBox.classList.add('hidden');
+        stopwatchBar.classList.add('hidden');
+        countupBar.classList.remove('hidden');
+        utilityControls.classList.remove('hidden');
+        lapBtn.classList.add('hidden');
+        lapsContainer.classList.add('hidden');
+        ampmBadge.classList.add('hidden');
+
+        unitSeconds.classList.toggle('hidden', !settings.showSeconds);
+        secondsColon.classList.toggle('hidden', !settings.showSeconds);
+
+        syncUtilityButtonUI(countupRunning);
+        renderCountupDisplay();
       }
     }
 
@@ -1165,6 +1209,31 @@
       renderStopwatchDisplay();
     }
 
+    function toggleCountup() {
+      if (countupRunning) {
+        clearInterval(countupInterval);
+        countupRunning = false;
+        syncUtilityButtonUI(false);
+      } else {
+        countupRunning = true;
+        syncUtilityButtonUI(true);
+        countupInterval = setInterval(() => {
+          countupElapsedSeconds++;
+          if (currentMode === 'countup') {
+            renderCountupDisplay();
+          }
+        }, 1000);
+      }
+    }
+
+    function resetCountup() {
+      clearInterval(countupInterval);
+      countupRunning = false;
+      countupElapsedSeconds = 0;
+      syncUtilityButtonUI(false);
+      renderCountupDisplay();
+    }
+
     function recordStopwatchLap() {
       if (stopwatchElapsedMs === 0) return;
       const totalSeconds = Math.floor(stopwatchElapsedMs / 1000);
@@ -1188,6 +1257,7 @@
     document.getElementById('utility-start-pause-btn').addEventListener('click', () => {
       if (currentMode === 'timer') toggleTimer();
       else if (currentMode === 'stopwatch') toggleStopwatch();
+      else if (currentMode === 'countup') toggleCountup();
     });
 
     document.getElementById('utility-reset-btn').addEventListener('click', () => {
@@ -1197,6 +1267,9 @@
       } else if (currentMode === 'stopwatch') {
         resetStopwatch();
         showToast('碼錶已歸零');
+      } else if (currentMode === 'countup') {
+        resetCountup();
+        showToast('正數計時已歸零');
       }
     });
 
@@ -1243,7 +1316,7 @@
       document.documentElement.style.setProperty('--text-color', cfg.textColor);
       document.documentElement.style.setProperty('--font-weight', cfg.fontWeight);
 
-      if (currentMode === 'clock') {
+      if (currentMode === 'clock' || currentMode === 'countup') {
         if (cfg.showSeconds) {
           unitSeconds.classList.remove('hidden');
           secondsColon.classList.remove('hidden');
@@ -1252,10 +1325,12 @@
           secondsColon.classList.add('hidden');
         }
 
-        if (cfg.showAmPm) {
-          ampmBadge.classList.remove('hidden');
-        } else {
-          ampmBadge.classList.add('hidden');
+        if (currentMode === 'clock') {
+          if (cfg.showAmPm) {
+            ampmBadge.classList.remove('hidden');
+          } else {
+            ampmBadge.classList.add('hidden');
+          }
         }
       }
 
@@ -1272,6 +1347,7 @@
       if (currentMode === 'clock') updateClock();
       else if (currentMode === 'timer') renderTimerDisplay();
       else if (currentMode === 'stopwatch') renderStopwatchDisplay();
+      else if (currentMode === 'countup') renderCountupDisplay();
     }
 
     function renderSettingsModalUI() {
@@ -1602,7 +1678,7 @@
     window.addEventListener('DOMContentLoaded', () => {
       const urlMode = new URLSearchParams(window.location.search).get('mode');
       applySettingsToDOM(settings);
-      if (urlMode === 'timer' || urlMode === 'stopwatch') {
+      if (urlMode === 'timer' || urlMode === 'stopwatch' || urlMode === 'countup') {
         setMode(urlMode);
       }
       startPrecisionClock();
