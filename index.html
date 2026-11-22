@@ -1404,6 +1404,12 @@
 
       syncCleanModeUI();
       prevValues.hours = null;
+      if (currentMode === 'clock') updateClock();
+      else if (currentMode === 'timer') renderTimerDisplay();
+      else if (currentMode === 'stopwatch') renderStopwatchDisplay();
+      else if (currentMode === 'countup') renderCountupDisplay();
+    }
+
     function syncCleanModeUI() {
       const isFullscreen = Boolean(document.fullscreenElement);
       const cleanBtn = document.getElementById('clean-mode-btn');
@@ -1433,44 +1439,37 @@
       restoreBtn.classList.toggle('flex', activeClean);
     }
 
-    function toggleCleanTimeOnly(forceState) {
-      cleanTimeOnly = typeof forceState === 'boolean' ? forceState : !cleanTimeOnly;
-      syncCleanModeUI();
-      showToast(cleanTimeOnly ? '已隱藏其他按鈕，僅顯示時間' : '已顯示所有按鈕');
-    }
+    function renderSettingsModalUI() {
+      const presetGrid = document.getElementById('preset-grid');
+      if (presetGrid) {
+        presetGrid.innerHTML = '';
+        APPEARANCE_PRESETS.forEach((preset) => {
+          const isMatched =
+            (draftSettings.stageBg || '#090f16').toLowerCase() === preset.stageBg.toLowerCase() &&
+            draftSettings.cardBg.toLowerCase() === preset.cardBg.toLowerCase() &&
+            draftSettings.textColor.toLowerCase() === preset.textColor.toLowerCase();
 
-    document.getElementById('clean-mode-btn').addEventListener('click', () => {
-      toggleCleanTimeOnly();
-    });
-
-    document.getElementById('restore-clean-btn').addEventListener('click', () => {
-      toggleCleanTimeOnly(false);
-    });
-
-    document.getElementById('fullscreen-btn').addEventListener('click', async () => {
-      try {
-        if (!document.fullscreenElement) {
-          await clockStage.requestFullscreen();
-          document.getElementById('fullscreen-label').textContent = '退出全螢幕';
-        } else {
-          await document.exitFullscreen();
-          document.getElementById('fullscreen-label').textContent = '全螢幕';
-        }
-      } catch (err) {
-        showToast('目前環境不支援全螢幕模式');
-      }
-    });
-
-    document.addEventListener('fullscreenchange', () => {
-      const isFs = Boolean(document.fullscreenElement);
-      document.getElementById('fullscreen-label').textContent =
-        isFs ? '退出全螢幕' : '全螢幕';
-      if (!isFs && cleanTimeOnly) {
-        cleanTimeOnly = false;
-      }
-      syncCleanModeUI();
-    });
-
+          const cardBtn = document.createElement('button');
+          cardBtn.type = 'button';
+          cardBtn.className = `w-full text-left px-3.5 py-2.5 rounded-[11px] border transition flex items-center justify-between gap-3 ${
+            isMatched
+              ? 'border-[#0071E3] bg-[#0071E3]/10 text-[#0071E3]'
+              : 'border-[#D2D2D7] bg-[#FFFFFF] hover:bg-[#F5F5F7] text-[#1D1D1F]'
+          }`;
+          cardBtn.innerHTML = `
+            <span class="text-[13px] font-semibold tracking-[-0.12px]">${preset.name}</span>
+            <span class="flex items-center gap-1.5 shrink-0">
+              <span class="w-4 h-4 rounded-full border border-black/15" style="background-color:${preset.stageBg}" title="背景色"></span>
+              <span class="w-4 h-4 rounded-full border border-black/15" style="background-color:${preset.cardBg}" title="卡片色"></span>
+              <span class="w-4 h-4 rounded-full border border-black/15" style="background-color:${preset.textColor}" title="字體色"></span>
+            </span>
+          `;
+          cardBtn.addEventListener('click', () => {
+            draftSettings.stageBg = preset.stageBg;
+            draftSettings.cardBg = preset.cardBg;
+            draftSettings.textColor = preset.textColor;
+            renderSettingsModalUI();
+          });
           presetGrid.appendChild(cardBtn);
         });
       }
