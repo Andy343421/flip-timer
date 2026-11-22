@@ -39,6 +39,7 @@
       --text-color: #FFFFFF;
       --font-weight: 600;
       --perspective: 1400px;
+      --restore-btn-opacity: 0.6;
 
       /* Typography Stacks */
       --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro TC", "PingFang TC", "Helvetica Neue", sans-serif;
@@ -636,7 +637,7 @@
     </main>
 
     <!-- Floating Restore Button when Clean Time-Only Mode is active in Fullscreen -->
-    <button id="restore-clean-btn" type="button" class="hidden fixed bottom-5 right-5 z-40 items-center gap-1.5 px-3.5 py-2 rounded-full bg-[#181D24]/90 hover:bg-[#181D24] border border-[#30353B] text-[12px] text-white/90 hover:text-white transition" title="顯示所有按鈕">
+    <button id="restore-clean-btn" type="button" style="opacity: var(--restore-btn-opacity);" class="hidden fixed bottom-5 right-5 z-40 items-center gap-1.5 px-3.5 py-2 rounded-full bg-[#181D24]/90 hover:opacity-100 border border-[#30353B] text-[12px] text-white transition" title="顯示所有按鈕">
       <svg class="w-3.5 h-3.5 text-[#2997FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
         <circle cx="12" cy="12" r="3"></circle>
@@ -733,7 +734,7 @@
         <!-- 5. 顯示選項 -->
         <div class="pt-2 border-t border-[#D2D2D7]">
           <h3 class="text-[14px] font-semibold leading-[1.33] tracking-[-0.12px] text-[#000000] mb-3">顯示選項</h3>
-          <div class="grid grid-cols-2 gap-y-3 gap-x-6 text-[14px] leading-[1.29] tracking-[-0.22px] text-[#1D1D1F]">
+          <div class="grid grid-cols-2 gap-y-3 gap-x-6 text-[14px] leading-[1.29] tracking-[-0.22px] text-[#1D1D1F] mb-4">
             <label class="flex items-center gap-2.5 cursor-pointer select-none">
               <input type="checkbox" id="opt-lunar" class="w-4 h-4 rounded-[4px] accent-[#0071E3] border-[#D2D2D7]">
               <span>顯示農曆</span>
@@ -754,6 +755,14 @@
               <input type="checkbox" id="opt-bg" class="w-4 h-4 rounded-[4px] accent-[#0071E3] border-[#D2D2D7]">
               <span>顯示背景</span>
             </label>
+          </div>
+
+          <div class="pt-2 border-t border-[#D2D2D7]/70">
+            <div class="flex items-center justify-between mb-1.5">
+              <label for="opt-restore-opacity" class="text-[12px] font-semibold text-[#1D1D1F]">「顯示按鈕」透明度</label>
+              <span id="opt-restore-opacity-val" class="text-[12px] font-mono text-[#0071E3]">60%</span>
+            </div>
+            <input type="range" id="opt-restore-opacity" min="10" max="100" step="5" value="60" class="w-full accent-[#0071E3] cursor-pointer">
           </div>
         </div>
 
@@ -803,6 +812,7 @@
       textColor: '#ffffff',
       cardBg: '#1d1d1f',
       stageBg: '#090f16',
+      restoreButtonOpacity: 60,
       showLunar: true,
       showWeekday: true,
       showAmPm: true,
@@ -1403,6 +1413,8 @@
       document.documentElement.style.setProperty('--card-bg', cfg.cardBg);
       document.documentElement.style.setProperty('--text-color', cfg.textColor);
       document.documentElement.style.setProperty('--font-weight', cfg.fontWeight);
+      const opacityVal = typeof cfg.restoreButtonOpacity === 'number' ? cfg.restoreButtonOpacity : 60;
+      document.documentElement.style.setProperty('--restore-btn-opacity', String(Math.max(0.1, Math.min(1, opacityVal / 100))));
 
       if (currentMode === 'clock' || currentMode === 'countup') {
         if (cfg.showSeconds) {
@@ -1583,6 +1595,12 @@
       document.getElementById('opt-ampm').checked = draftSettings.showAmPm;
       document.getElementById('opt-24h').checked = draftSettings.is24Hour;
       document.getElementById('opt-bg').checked = draftSettings.showBg;
+
+      const opacityPercent = typeof draftSettings.restoreButtonOpacity === 'number' ? draftSettings.restoreButtonOpacity : 60;
+      const opacityInput = document.getElementById('opt-restore-opacity');
+      const opacityLabel = document.getElementById('opt-restore-opacity-val');
+      if (opacityInput) opacityInput.value = String(opacityPercent);
+      if (opacityLabel) opacityLabel.textContent = `${opacityPercent}%`;
     }
 
     function update3DTransform() {
@@ -1816,6 +1834,11 @@
     });
     document.getElementById('opt-bg').addEventListener('change', (e) => {
       draftSettings.showBg = e.target.checked;
+    });
+    document.getElementById('opt-restore-opacity').addEventListener('input', (e) => {
+      const val = Math.max(10, Math.min(100, parseInt(e.target.value || '60', 10)));
+      draftSettings.restoreButtonOpacity = val;
+      document.getElementById('opt-restore-opacity-val').textContent = `${val}%`;
     });
 
     document.getElementById('reset-settings-btn').addEventListener('click', () => {
