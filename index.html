@@ -92,6 +92,19 @@
       background-color: #000000;
     }
 
+    /* Clean time-only mode (hides all controls/chrome except time display) */
+    .hero-stage.clean-time-only .apple-nav,
+    .hero-stage.clean-time-only #timer-presets-bar,
+    .hero-stage.clean-time-only #custom-timer-box,
+    .hero-stage.clean-time-only #stopwatch-info-bar,
+    .hero-stage.clean-time-only #countup-info-bar,
+    .hero-stage.clean-time-only #utility-controls,
+    .hero-stage.clean-time-only #stopwatch-laps,
+    .hero-stage.clean-time-only #interaction-hint,
+    .hero-stage.clean-time-only footer {
+      display: none !important;
+    }
+
     /* Top Navigation Bar (44px height per apple.DESIGN.md) */
     .apple-nav {
       height: 44px;
@@ -447,9 +460,23 @@
               <line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line>
             </svg>
             <span id="fullscreen-label">全螢幕</span>
-          </button>
+        </button>
 
-          <!-- Keep Awake (Wake Lock) Button -->
+        <!-- Clean Time-Only Toggle Button (Shown in Fullscreen Mode) -->
+        <button id="clean-mode-btn" type="button" class="hidden items-center gap-1.5 px-2.5 py-1 rounded-[8px] hover:bg-white/10 text-[12px] sm:text-[14px] text-white/85 hover:text-white transition" title="隱藏除時間以外的所有按鈕與提示">
+          <svg id="clean-icon-hide" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"></path>
+            <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"></path>
+            <line x1="1" y1="1" x2="23" y2="23"></line>
+          </svg>
+          <svg id="clean-icon-show" class="hidden w-3.5 h-3.5 text-[#2997FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          <span id="clean-mode-label">隱藏按鈕</span>
+        </button>
+
+        <!-- Keep Awake (Wake Lock) Button -->
           <button id="wakelock-btn" type="button" class="flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] hover:bg-white/10 text-[12px] sm:text-[14px] text-[#2997FF] font-normal transition" title="防止螢幕自動休眠">
             <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>
@@ -588,11 +615,20 @@
         <div id="stopwatch-laps" class="hidden mt-5 w-full max-w-md max-h-28 overflow-y-auto settings-scroll px-3 space-y-1.5 text-[12px] sm:text-[14px]"></div>
 
         <!-- Minimalist Interaction Caption -->
-        <p class="mt-8 text-[12px] leading-[1.33] tracking-[-0.12px] text-[#86868B] select-none">
+        <p id="interaction-hint" class="mt-8 text-[12px] leading-[1.33] tracking-[-0.12px] text-[#86868B] select-none">
           拖動旋轉 3D 視角 · 滾輪縮放 · 雙擊重置
         </p>
       </div>
     </main>
+
+    <!-- Floating Restore Button when Clean Time-Only Mode is active in Fullscreen -->
+    <button id="restore-clean-btn" type="button" class="hidden fixed bottom-5 right-5 z-40 items-center gap-1.5 px-3.5 py-2 rounded-full bg-[#181D24]/80 hover:bg-[#181D24] border border-[#30353B] text-[12px] text-white/85 hover:text-white transition" title="顯示所有按鈕">
+      <svg class="w-3.5 h-3.5 text-[#2997FF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+        <circle cx="12" cy="12" r="3"></circle>
+      </svg>
+      <span>顯示按鈕</span>
+    </button>
 
     <!-- Minimalist Bottom Bar (Embed Action Only; Feature Intro Section Removed) -->
     <footer class="w-full z-20 px-3 pb-4 flex items-center justify-center">
@@ -622,8 +658,15 @@
       <!-- Modal Scrollable Body -->
       <div class="p-6 overflow-y-auto settings-scroll space-y-6">
 
-        <!-- 1. 時間格式 -->
+        <!-- 0. 配套外觀主題 -->
         <div>
+          <h3 class="text-[14px] font-semibold leading-[1.33] tracking-[-0.12px] text-[#000000] mb-1">配套外觀主題</h3>
+          <p class="text-[12px] leading-[1.33] tracking-[-0.12px] text-[#6E6E73] mb-3">一鍵套用三色搭配（背景色 / 卡片色 / 字體色），也可在下方個別微調</p>
+          <div id="preset-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5"></div>
+        </div>
+
+        <!-- 1. 時間格式 -->
+        <div class="pt-2 border-t border-[#D2D2D7]">
           <h3 class="text-[14px] font-semibold leading-[1.33] tracking-[-0.12px] text-[#000000] mb-3">時間格式</h3>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5" id="format-options">
             <button type="button" data-format="24-sec" class="format-btn text-left px-4 py-2.5 rounded-[11px] border text-[14px] transition">
@@ -738,6 +781,20 @@
       '#9333ea', '#65a30d'
     ];
 
+    // Coordinated 3-color theme presets: [stageBg, cardBg, textColor]
+    const APPEARANCE_PRESETS = [
+      { id: 'classic', name: '經典深色翻頁', stageBg: '#090f16', cardBg: '#1d1d1f', textColor: '#ffffff' },
+      { id: 'minimal-light', name: '極簡白晝翻頁', stageBg: '#ffffff', cardBg: '#f5f5f7', textColor: '#000000' },
+      { id: 'amber-retro', name: '復古琥珀輝光', stageBg: '#000000', cardBg: '#181d24', textColor: '#fbbf24' },
+      { id: 'apple-blue', name: '曜石電光藍', stageBg: '#000000', cardBg: '#1d1d1f', textColor: '#2997ff' },
+      { id: 'nordic-mist', name: '北歐霧灰銀', stageBg: '#f5f5f7', cardBg: '#ffffff', textColor: '#1d1d1f' },
+      { id: 'terracotta-warm', name: '暖陶夕陽橘', stageBg: '#1d1d1f', cardBg: '#b64400', textColor: '#ffffff' },
+      { id: 'emerald-studio', name: '翡翠工作室', stageBg: '#090f16', cardBg: '#059669', textColor: '#ffffff' },
+      { id: 'violet-night', name: '暮色紫羅蘭', stageBg: '#000000', cardBg: '#333336', textColor: '#8b5cf6' },
+      { id: 'crimson-cinema', name: '劇院緋紅', stageBg: '#090f16', cardBg: '#1d1d1f', textColor: '#ef4444' },
+      { id: 'cobalt-studio', name: '鈷藍設計室', stageBg: '#f5f5f7', cardBg: '#0071e3', textColor: '#ffffff' }
+    ];
+
     const defaultSettings = {
       is24Hour: true,
       showSeconds: true,
@@ -810,6 +867,7 @@
     let flipSynth = null;
     let wakeLockSentinel = null;
     let keepAwakeActive = true;
+    let cleanTimeOnly = false;
 
     // 3D Transform State
     let rotX = 0;
@@ -1023,6 +1081,7 @@
 
     function setMode(newMode) {
       currentMode = newMode;
+      syncCleanModeUI();
 
       const labels = {
         clock: '翻頁時鐘',
@@ -1343,14 +1402,79 @@
         clockStage.classList.add('no-bg');
       }
 
+      syncCleanModeUI();
       prevValues.hours = null;
-      if (currentMode === 'clock') updateClock();
-      else if (currentMode === 'timer') renderTimerDisplay();
-      else if (currentMode === 'stopwatch') renderStopwatchDisplay();
-      else if (currentMode === 'countup') renderCountupDisplay();
+    function syncCleanModeUI() {
+      const isFullscreen = Boolean(document.fullscreenElement);
+      const cleanBtn = document.getElementById('clean-mode-btn');
+      const restoreBtn = document.getElementById('restore-clean-btn');
+      const hideIcon = document.getElementById('clean-icon-hide');
+      const showIcon = document.getElementById('clean-icon-show');
+      const cleanLabel = document.getElementById('clean-mode-label');
+      const dateBar = document.getElementById('date-info-bar');
+
+      // Show the fullscreen clean-view toggle button only while in fullscreen
+      cleanBtn.classList.toggle('hidden', !isFullscreen);
+      cleanBtn.classList.toggle('flex', isFullscreen);
+
+      const activeClean = isFullscreen && cleanTimeOnly;
+      clockStage.classList.toggle('clean-time-only', activeClean);
+
+      // In clean time-only mode, hide date/lunar/weekday metadata as well so only time remains
+      if (currentMode === 'clock') {
+        dateBar.classList.toggle('hidden', activeClean);
+      }
+
+      hideIcon.classList.toggle('hidden', cleanTimeOnly);
+      showIcon.classList.toggle('hidden', !cleanTimeOnly);
+      cleanLabel.textContent = cleanTimeOnly ? '顯示按鈕' : '隱藏按鈕';
+
+      restoreBtn.classList.toggle('hidden', !activeClean);
+      restoreBtn.classList.toggle('flex', activeClean);
     }
 
-    function renderSettingsModalUI() {
+    function toggleCleanTimeOnly(forceState) {
+      cleanTimeOnly = typeof forceState === 'boolean' ? forceState : !cleanTimeOnly;
+      syncCleanModeUI();
+      showToast(cleanTimeOnly ? '已隱藏其他按鈕，僅顯示時間' : '已顯示所有按鈕');
+    }
+
+    document.getElementById('clean-mode-btn').addEventListener('click', () => {
+      toggleCleanTimeOnly();
+    });
+
+    document.getElementById('restore-clean-btn').addEventListener('click', () => {
+      toggleCleanTimeOnly(false);
+    });
+
+    document.getElementById('fullscreen-btn').addEventListener('click', async () => {
+      try {
+        if (!document.fullscreenElement) {
+          await clockStage.requestFullscreen();
+          document.getElementById('fullscreen-label').textContent = '退出全螢幕';
+        } else {
+          await document.exitFullscreen();
+          document.getElementById('fullscreen-label').textContent = '全螢幕';
+        }
+      } catch (err) {
+        showToast('目前環境不支援全螢幕模式');
+      }
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+      const isFs = Boolean(document.fullscreenElement);
+      document.getElementById('fullscreen-label').textContent =
+        isFs ? '退出全螢幕' : '全螢幕';
+      if (!isFs && cleanTimeOnly) {
+        cleanTimeOnly = false;
+      }
+      syncCleanModeUI();
+    });
+
+          presetGrid.appendChild(cardBtn);
+        });
+      }
+
       document.querySelectorAll('.format-btn').forEach(btn => {
         const fmt = btn.dataset.format;
         const isCurrent =
@@ -1552,31 +1676,6 @@
 
     document.addEventListener('click', () => {
       menuDropdown.classList.add('hidden');
-    });
-
-    document.querySelectorAll('.preset-item').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const preset = btn.dataset.preset;
-        if (preset === 'classic') {
-          settings.cardBg = '#1d1d1f';
-          settings.textColor = '#ffffff';
-          settings.stageBg = '#090f16';
-        } else if (preset === 'minimal-light') {
-          settings.cardBg = '#f5f5f7';
-          settings.textColor = '#000000';
-          settings.stageBg = '#ffffff';
-        } else if (preset === 'amber-retro') {
-          settings.cardBg = '#181d24';
-          settings.textColor = '#fbbf24';
-          settings.stageBg = '#000000';
-        } else if (preset === 'matrix-green') {
-          settings.cardBg = '#090f16';
-          settings.textColor = '#2997ff';
-          settings.stageBg = '#181d24';
-        }
-        applySettingsToDOM(settings);
-        showToast('已切換時鐘外觀主題');
-      });
     });
 
     document.getElementById('reset-3d-btn').addEventListener('click', () => {
